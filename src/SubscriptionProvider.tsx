@@ -14,7 +14,7 @@ export interface SubscriptionState {
   server: ServerInfo | null;
   /** True until the first answer arrives. */
   loading: boolean;
-  /** False where purchases can't happen (web, Expo Go without a store). */
+  /** False where purchases can't happen (no key, Expo Go without a store). */
   ready: boolean;
   isAtLeast(tier: string): boolean;
   canUse(feature: string): boolean;
@@ -27,6 +27,8 @@ export interface SubscriptionState {
   buy(plan: StorePlan): Promise<PurchaseResult>;
   restore(): Promise<PurchaseResult>;
   redeemCode(code?: string): Promise<void>;
+  /** Whether to offer "Have a code?". False on the website, where store codes can't be used. */
+  canRedeemCode: boolean;
   openManage(): Promise<void>;
   /** Runs the grown-ups check in a kids' app; true right away otherwise. */
   grownUp(): Promise<boolean>;
@@ -90,6 +92,8 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, c
       buy: async (plan) => ((await grownUp()) ? settle(await payments.buy(plan)) : CANCELLED),
       restore: async () => ((await grownUp()) ? settle(await payments.restore()) : CANCELLED),
       redeemCode: async (code) => { if (await grownUp()) await payments.redeemCode?.(code); },
+      // Before purchases open, the box stays so the screen can say "not open yet"; once open, only where the provider takes codes.
+      canRedeemCode: !payments.ready || payments.canRedeemCode !== false,
       openManage: async () => { if (await grownUp()) await payments.openManage?.(); },
       grownUp,
       tester: {

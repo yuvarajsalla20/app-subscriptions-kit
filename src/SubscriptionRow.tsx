@@ -44,7 +44,7 @@ export function SubscriptionRow({ onOpenPlans, ...look }: LookProps & { onOpenPl
         ) : (
           row(s.upgrade(config.tierLabels[config.tiers[1]!]!), '›', onOpenPlans)
         )}
-        {row(s.haveCode, '›', () => void sub.redeemCode(''))}
+        {sub.canRedeemCode && row(s.haveCode, '›', () => void sub.redeemCode(''))}
         {row(s.restore, '›', () => void sub.restore())}
       </View>
       {server?.status === 'grace' && (

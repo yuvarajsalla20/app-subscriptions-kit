@@ -28,12 +28,14 @@ export interface WatchState {
 }
 
 export interface PaymentsLike {
-  /** False where purchases can't happen (web, Expo Go without a store). */
+  /** False where purchases can't happen (no key, Expo Go without a store). */
   ready: boolean;
   loadPlans(): Promise<StorePlan[]>;
   buy(plan: StorePlan): Promise<PurchaseResult>;
   restore(): Promise<PurchaseResult>;
   redeemCode?(code?: string): Promise<void>;
+  /** False where there is no code box (the website). Left out means codes are offered. */
+  canRedeemCode?: boolean;
   openManage?(): Promise<void>;
   watch(userId: string | null, cb: (s: WatchState) => void): () => void;
   testerAvailable?: boolean;
