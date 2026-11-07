@@ -69,6 +69,10 @@ if (!canUse('practiceTest')) return <PremiumGate feature="practiceTest" name="Pr
 
 Keep the limits that matter on the server too (app-payments-kit's `has_tier()` in a database trigger): the phone's answer is for showing locks.
 
+## On the website
+
+With app-payments-kit's RevenueCat web provider (`revenueCatWeb`), the same Plans screen sells on the website with card checkout. The website has no store codes, so "Have a code?" is hidden there (`payments.canRedeemCode` is false; any payments object can set it). Restore and Manage work the same.
+
 ## Look and words
 
 Every screen takes `theme` (colors, radius), `strings` (every word, for rewording or translation) and `components` (`Text`, for your fonts). Pass only what differs. The default is the gold Premium look.

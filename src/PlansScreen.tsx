@@ -164,7 +164,7 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
             </Pressable>
           </View>
         ) : (
-          link(s.haveCode, openCode)
+          sub.canRedeemCode && link(s.haveCode, openCode)
         )}
         {link(busy === 'restore' ? s.restoring : s.restore, () => void restore(), busy !== '')}
         {sub.paid && link(s.manage, () => void sub.openManage())}

@@ -106,6 +106,14 @@ describe('PlansScreen', () => {
     expect(a.label('Enter code')).toBeDefined();
     Platform.OS = 'ios';
   });
+
+  it('has no code box where the provider takes no codes (the website)', async () => {
+    const m = await mount(app(<PlansScreen {...legal} />, fakePayments({ canRedeemCode: false })));
+    expect(m.shown('Have a code?')).toBe(false);
+    expect(m.shown('Restore purchases')).toBe(true);
+    const r = await mount(app(<SubscriptionRow onOpenPlans={() => undefined} />, fakePayments({ canRedeemCode: false })));
+    expect(r.shown('Have a code?')).toBe(false);
+  });
 });
 
 describe('gates and badges', () => {
