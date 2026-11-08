@@ -32,6 +32,13 @@ export interface PlansScreenProps extends LookProps {
    * Left out: other plans can't be picked while subscribed.
    */
   onSwitch?: (plan: StorePlan) => void | Promise<void>;
+  /**
+   * Which other plans a subscriber may switch to (default: all of the same tier). For example, only longer plans, so a
+   * yearly member is never invited to move down to a shorter one. With no plan allowed, no switch is offered at all.
+   */
+  canSwitchTo?: (from: StorePlan, to: StorePlan) => boolean;
+  /** Drawn next to the current plan's name (for example, the app's Premium icon). */
+  currentMark?: ReactNode;
   /** Shown instead of switching when the plan was bought somewhere this device can't change (another store). */
   switchBlocked?: string | null;
   /** Replaces the default "Manage or cancel" action (for example, to show the app's own cancel sheet first). */
@@ -44,7 +51,7 @@ export interface PlansScreenProps extends LookProps {
  * The Plans screen: the store's real prices, a trial only when this person can still use it, restore, codes,
  * manage, and the wording and links Apple and Google ask for.
  */
-export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previewPlans, initialTier, onUnlocked, hideCompare, currentPlanId, onSwitch, switchBlocked, onManage, compareFirst, ...look }: PlansScreenProps) {
+export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previewPlans, initialTier, onUnlocked, hideCompare, currentPlanId, onSwitch, canSwitchTo, currentMark, switchBlocked, onManage, compareFirst, ...look }: PlansScreenProps) {
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
   const { config } = sub;
@@ -79,9 +86,11 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   const has = rank(config, sub.tier) >= rank(config, tab);
   // The row the account pays for now, only on the tab of the tier it has.
   const current = has && currentPlanId && sub.tier === tab ? shown.find((x) => x.cfg.id === currentPlanId) ?? null : null;
-  const canSwitch = !!current && !!onSwitch && !switchBlocked;
-  // While switching is offered, the current plan is greyed out and the best other plan is picked to start with.
-  const others = canSwitch ? shown.filter((x) => x.cfg.id !== current!.cfg.id) : shown;
+  // The plans a subscriber may move to: the same tier's others, narrowed by the app (for example, longer plans only).
+  const targets = current ? shown.filter((x) => x.cfg.id !== current.cfg.id && (!canSwitchTo || canSwitchTo(current.sp, x.sp))) : [];
+  const canSwitch = !!current && !!onSwitch && !switchBlocked && targets.length > 0;
+  // While switching is offered, the current plan is greyed out and the best allowed plan is picked to start with.
+  const others = canSwitch ? targets : shown;
   const chosen = shown.find((x) => x.cfg.id === pick && !(canSwitch && x.cfg.id === current!.cfg.id))
     ?? (canSwitch ? others.find((x) => x.cfg.badge) ?? others.find((x) => x.cfg.selected) ?? others[0] : current ?? shown.find((x) => x.cfg.selected) ?? shown[0]);
   const switching = canSwitch && !!chosen && chosen.cfg.id !== current!.cfg.id;
@@ -174,8 +183,8 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
           {shown.map(({ cfg, sp }) => {
             const on = cfg.id === chosen?.cfg.id;
             const isCurrent = cfg.id === current?.cfg.id;
-            // While subscribed, the other plans can be picked only where switching is offered; the current one never then.
-            const pickable = !has || (canSwitch ? !isCurrent : isCurrent);
+            // While subscribed, only the allowed other plans can be picked where switching is offered; the current one never then.
+            const pickable = !has || (canSwitch ? targets.some((x) => x.cfg.id === cfg.id) : isCurrent);
             const pm = perMonth(sp);
             const saved = savings(sp, source);
             const tag = isCurrent ? s.currentPlan : cfg.badge;
@@ -189,7 +198,10 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
                 ) : null}
                 <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: on ? 6 : 2, borderColor: on ? c.accent : c.border }} />
                 <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={{ color: isCurrent && canSwitch ? c.muted : c.text, fontWeight: '800', fontSize: 16 }}>{cfg.label}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={{ color: isCurrent && canSwitch ? c.muted : c.text, fontWeight: '800', fontSize: 16 }}>{cfg.label}</Text>
+                    {isCurrent && currentMark ? currentMark : null}
+                  </View>
                   {pm !== null || sp.period ? (
                     <Text style={{ color: c.muted, fontSize: 13 }}>
                       {pm !== null ? `${s.perMonth(money(pm, sp.currency))}${saved ? ` · ${s.save(saved)}` : ''}` : sp.period ? s.every(sp.period.unit, sp.period.count) : ''}
