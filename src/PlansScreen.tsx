@@ -62,7 +62,8 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   const [tries, setTries] = useState(0);
   const [pick, setPick] = useState<string | null>(null);
   const [busy, setBusy] = useState<'' | 'buy' | 'restore'>('');
-  const [note, setNote] = useState<{ text: string; good: boolean } | null>(null);
+  // Where the answer shows: under the restore and code links, or above the main button after a purchase.
+  const [note, setNote] = useState<{ text: string; good: boolean; at: 'box' | 'footer' } | null>(null);
   const [codeOpen, setCodeOpen] = useState(false);
   const [code, setCode] = useState('');
 
@@ -102,35 +103,35 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   const priced = !has ? chosen : switching ? chosen : current;
   const locked = has && !switching;
 
-  const after = (r: PurchaseResult, success: string, nothing: string) => {
+  const after = (r: PurchaseResult, success: string, nothing: string, at: 'box' | 'footer') => {
     if (r.ok) {
       const on = rank(config, r.tier) > 0;
-      setNote({ text: on ? success : nothing, good: on });
+      setNote({ text: on ? success : nothing, good: on, at });
       if (on) onUnlocked?.(r.tier);
-    } else if (!r.cancelled) setNote({ text: r.message, good: false });
+    } else if (!r.cancelled) setNote({ text: r.message, good: false, at });
   };
-  const notYet = () => setNote({ text: sub.ready ? s.pricesFailed : s.notOpenYet, good: false });
+  const notYet = (at: 'box' | 'footer') => setNote({ text: sub.ready ? s.pricesFailed : s.notOpenYet, good: false, at });
   const buy = async () => {
     if (switching) {
       setBusy('buy'); setNote(null);
       try { await onSwitch!(chosen!.sp); } finally { setBusy(''); }
       return;
     }
-    if (!live || !chosen) return notYet();
+    if (!live || !chosen) return notYet('footer');
     setBusy('buy'); setNote(null);
-    after(await sub.buy(chosen.sp), s.welcome(tabLabel), s.boughtNotActive);
+    after(await sub.buy(chosen.sp), s.welcome(tabLabel), s.boughtNotActive, 'footer');
     setBusy('');
   };
   const restore = async () => {
-    if (!sub.ready) return notYet();
+    if (!sub.ready) return notYet('box');
     setBusy('restore'); setNote(null);
     const r = await sub.restore();
-    after(r, s.restored(r.ok ? config.tierLabels[r.tier] ?? '' : ''), s.nothingToRestore);
+    after(r, s.restored(r.ok ? config.tierLabels[r.tier] ?? '' : ''), s.nothingToRestore, 'box');
     setBusy('');
   };
   // iPhone shows Apple's own code sheet; elsewhere the code is typed here and sent to the store.
   const openCode = () => (sub.ready && Platform.OS === 'ios' ? void sub.redeemCode('') : setCodeOpen(true));
-  const applyCode = () => (sub.ready ? void sub.redeemCode(code) : notYet());
+  const applyCode = () => (sub.ready ? void sub.redeemCode(code) : notYet('box'));
 
   const lift = c.shadow ? { boxShadow: c.shadow } : { borderWidth: 1, borderColor: c.border };
   const button = c.button ?? c.accent;
@@ -238,12 +239,13 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
             sub.canRedeemCode && link(s.haveCode, openCode)
           )}
           {sub.paid && link(s.manage, () => (onManage ? onManage() : void sub.openManage()))}
+          {/* The answer to restore, a code or a purchase shows right here, under the link just tapped, never off screen. */}
+          {note?.at === 'box' && (
+            <View accessibilityLiveRegion="polite" style={{ backgroundColor: note.good ? c.good : c.warn, borderRadius: c.radius, padding: 12, marginTop: 4 }}>
+              <Text style={{ color: c.text, fontSize: 14, textAlign: 'center' }}>{note.text}</Text>
+            </View>
+          )}
         </View>
-        {note && (
-          <View accessibilityLiveRegion="polite" style={{ backgroundColor: note.good ? c.good : c.warn, borderRadius: c.radius, padding: 12 }}>
-            <Text style={{ color: c.text, fontSize: 14 }}>{note.text}</Text>
-          </View>
-        )}
         <Text style={{ fontSize: 11, lineHeight: 16, color: c.muted }}>
           {s.legal(!!trial)}
           <Text accessibilityRole="link" style={{ color: c.accent, fontWeight: '600' }} onPress={onOpenTerms}>{s.terms}</Text>
@@ -253,6 +255,11 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
       </ScrollView>
 
       <View style={[{ gap: 6, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 12, backgroundColor: c.surface }, c.shadow ? { boxShadow: '0 -6px 20px rgba(0,0,0,0.06)' } : { borderTopWidth: 1, borderTopColor: c.border }]}>
+        {note?.at === 'footer' && (
+          <View accessibilityLiveRegion="polite" style={{ backgroundColor: note.good ? c.good : c.warn, borderRadius: c.radius, padding: 12 }}>
+            <Text style={{ color: c.text, fontSize: 14, textAlign: 'center' }}>{note.text}</Text>
+          </View>
+        )}
         <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: locked, busy: busy === 'buy' }} onPress={() => void buy()} disabled={locked || busy !== ''}
           style={{ minHeight: 52, borderRadius: c.shadow ? 26 : c.radius, alignItems: 'center', justifyContent: 'center', backgroundColor: button, opacity: locked ? 0.5 : 1 }}>
           <Text style={{ color: onButton, fontWeight: '800', fontSize: 16 }}>{busy === 'buy' ? '…' : label}</Text>
