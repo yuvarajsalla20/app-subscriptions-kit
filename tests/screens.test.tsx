@@ -45,21 +45,39 @@ describe('PlansScreen', () => {
     expect(m.shown('You have Premium')).toBe(true);
   });
 
-  it('marks the current plan, prices the footer by it, and offers a switch to another length', async () => {
+  it('greys out the current plan and starts on a switch to the best other length', async () => {
     const payments = fakePayments();
     const onSwitch = vi.fn();
     const m = await mount(app(<PlansScreen {...legal} currentPlanId="monthly" onSwitch={onSwitch} />, payments));
     await payments.emit({ tier: 'premium' });
     expect(m.shown('Current plan')).toBe(true);
-    expect(m.shown('You have Premium')).toBe(true);
-    // The monthly price, not the yearly row's.
-    expect(m.shown('$6.99 a month. Cancel any time.')).toBe(true);
-    expect(m.texts().some((t) => t.includes('$39.99 a year'))).toBe(false);
-    await press(m.label('Yearly, $39.99'));
+    expect(m.shown('CURRENT')).toBe(true);
+    expect(m.label('Monthly, $6.99, Current plan')!.props.disabled).toBe(true);
+    // The badge plan is picked to start with, and the footer prices the plan being switched to.
     expect(m.shown('Switch to Yearly')).toBe(true);
+    expect(m.shown('$39.99 a year. Cancel any time.')).toBe(true);
     await press(m.label('Switch to Yearly'));
     expect(onSwitch).toHaveBeenCalledWith(expect.objectContaining({ id: 'yearly' }));
     expect(payments.buy).not.toHaveBeenCalled();
+  });
+
+  it('prices the footer by the current plan when switching is not offered', async () => {
+    const payments = fakePayments();
+    const m = await mount(app(<PlansScreen {...legal} currentPlanId="monthly" />, payments));
+    await payments.emit({ tier: 'premium' });
+    expect(m.shown('You have Premium')).toBe(true);
+    expect(m.shown('$6.99 a month. Cancel any time.')).toBe(true);
+    expect(m.texts().some((t) => t.includes('$39.99 a year'))).toBe(false);
+  });
+
+  it('lets the app show its own sheet for manage or cancel', async () => {
+    const payments = fakePayments();
+    const onManage = vi.fn();
+    const m = await mount(app(<PlansScreen {...legal} currentPlanId="monthly" onManage={onManage} />, payments));
+    await payments.emit({ tier: 'premium' });
+    await press(m.button('Manage or cancel subscription'));
+    expect(onManage).toHaveBeenCalled();
+    expect(m.shown('Already subscribed?')).toBe(true);
   });
 
   it('keeps other plans locked while subscribed when switching is not offered or blocked', async () => {

@@ -34,13 +34,17 @@ export interface PlansScreenProps extends LookProps {
   onSwitch?: (plan: StorePlan) => void | Promise<void>;
   /** Shown instead of switching when the plan was bought somewhere this device can't change (another store). */
   switchBlocked?: string | null;
+  /** Replaces the default "Manage or cancel" action (for example, to show the app's own cancel sheet first). */
+  onManage?: () => void;
+  /** Put the Free vs paid table above the plans (the default is plans first, then the table). */
+  compareFirst?: boolean;
 }
 
 /**
  * The Plans screen: the store's real prices, a trial only when this person can still use it, restore, codes,
  * manage, and the wording and links Apple and Google ask for.
  */
-export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previewPlans, initialTier, onUnlocked, hideCompare, currentPlanId, onSwitch, switchBlocked, ...look }: PlansScreenProps) {
+export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previewPlans, initialTier, onUnlocked, hideCompare, currentPlanId, onSwitch, switchBlocked, onManage, compareFirst, ...look }: PlansScreenProps) {
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
   const { config } = sub;
@@ -76,7 +80,10 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   // The row the account pays for now, only on the tab of the tier it has.
   const current = has && currentPlanId && sub.tier === tab ? shown.find((x) => x.cfg.id === currentPlanId) ?? null : null;
   const canSwitch = !!current && !!onSwitch && !switchBlocked;
-  const chosen = shown.find((x) => x.cfg.id === pick) ?? current ?? shown.find((x) => x.cfg.selected) ?? shown[0];
+  // While switching is offered, the current plan is greyed out and the best other plan is picked to start with.
+  const others = canSwitch ? shown.filter((x) => x.cfg.id !== current!.cfg.id) : shown;
+  const chosen = shown.find((x) => x.cfg.id === pick && !(canSwitch && x.cfg.id === current!.cfg.id))
+    ?? (canSwitch ? others.find((x) => x.cfg.badge) ?? others.find((x) => x.cfg.selected) ?? others[0] : current ?? shown.find((x) => x.cfg.selected) ?? shown[0]);
   const switching = canSwitch && !!chosen && chosen.cfg.id !== current!.cfg.id;
   const live = sub.ready && store.length > 0;
   const tabLabel = config.tierLabels[tab]!;
@@ -116,6 +123,15 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   const openCode = () => (sub.ready && Platform.OS === 'ios' ? void sub.redeemCode('') : setCodeOpen(true));
   const applyCode = () => (sub.ready ? void sub.redeemCode(code) : notYet());
 
+  const lift = c.shadow ? { boxShadow: c.shadow } : { borderWidth: 1, borderColor: c.border };
+  const button = c.button ?? c.accent;
+  const onButton = c.onButton ?? c.onAccent;
+  const compare = !hideCompare ? (
+    <View style={{ gap: 8 }}>
+      <Text style={{ color: c.text, fontSize: 17, fontWeight: '800' }}>{s.compareTitle}</Text>
+      <CompareTable {...look} />
+    </View>
+  ) : null;
   const link = (text: string, onPress: () => void, disabled = false) => (
     <Pressable accessibilityRole="button" onPress={onPress} disabled={disabled} style={{ minHeight: 44, justifyContent: 'center' }}>
       <Text style={{ color: c.accent, fontWeight: '700', fontSize: 15, textAlign: 'center', textDecorationLine: 'underline' }}>{text}</Text>
@@ -133,7 +149,7 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
           </View>
         )}
         {header}
-        {!hideCompare && <CompareTable {...look} />}
+        {compareFirst && compare}
 
         {paidTiers.length > 1 && (
           <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: 4, backgroundColor: c.border, borderRadius: c.radius - 2, padding: 4 }}>
@@ -154,31 +170,36 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
         )}
         {!sub.ready && !previewPlans?.length && <Text style={{ color: c.muted, textAlign: 'center' }}>{s.notOpenYet}</Text>}
 
-        <View accessibilityRole="radiogroup" style={{ gap: 10 }}>
+        <View accessibilityRole="radiogroup" style={{ gap: 14, paddingTop: 6 }}>
           {shown.map(({ cfg, sp }) => {
             const on = cfg.id === chosen?.cfg.id;
             const isCurrent = cfg.id === current?.cfg.id;
-            // While subscribed, only the current plan (and, where switching is offered, the others) can be picked.
-            const pickable = !has || isCurrent || canSwitch;
+            // While subscribed, the other plans can be picked only where switching is offered; the current one never then.
+            const pickable = !has || (canSwitch ? !isCurrent : isCurrent);
             const pm = perMonth(sp);
             const saved = savings(sp, source);
+            const tag = isCurrent ? s.currentPlan : cfg.badge;
             return (
               <Pressable key={cfg.id} accessibilityRole="radio" accessibilityState={{ checked: on, disabled: !pickable }} accessibilityLabel={`${cfg.label}, ${sp.priceString}${isCurrent ? `, ${s.currentPlan}` : ''}`} onPress={() => setPick(cfg.id)} disabled={!pickable}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: c.radius + 2, borderWidth: on ? 2 : 1, borderColor: on ? c.accent : c.border, backgroundColor: c.surface, opacity: pickable ? 1 : 0.6 }}>
+                style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: tag ? 18 : 14, paddingBottom: 14, borderRadius: c.radius + 4, backgroundColor: isCurrent && canSwitch ? c.bg : c.surface, opacity: pickable || isCurrent ? 1 : 0.6 },
+                  on ? { borderWidth: 2, borderColor: c.accent } : isCurrent && canSwitch ? { borderWidth: 1, borderColor: c.border } : lift]}>
+                {tag ? (
+                  <Text style={{ position: 'absolute', top: -10, left: 14, fontSize: 11, fontWeight: '800', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10, overflow: 'hidden',
+                    color: isCurrent ? c.muted : c.onPremium, backgroundColor: isCurrent ? c.border : c.premium }}>{tag}</Text>
+                ) : null}
                 <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: on ? 6 : 2, borderColor: on ? c.accent : c.border }} />
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ color: c.text, fontWeight: '800', fontSize: 16 }}>{cfg.label}</Text>
-                    {isCurrent ? <Text style={{ fontSize: 11, fontWeight: '800', color: c.onAccent, backgroundColor: c.accent, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, overflow: 'hidden' }}>{s.currentPlan}</Text> : null}
-                    {cfg.badge && !isCurrent ? <Text style={{ fontSize: 11, fontWeight: '800', color: c.onPremium, backgroundColor: c.premium, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, overflow: 'hidden' }}>{cfg.badge}</Text> : null}
-                  </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={{ color: isCurrent && canSwitch ? c.muted : c.text, fontWeight: '800', fontSize: 16 }}>{cfg.label}</Text>
                   {pm !== null || sp.period ? (
                     <Text style={{ color: c.muted, fontSize: 13 }}>
                       {pm !== null ? `${s.perMonth(money(pm, sp.currency))}${saved ? ` · ${s.save(saved)}` : ''}` : sp.period ? s.every(sp.period.unit, sp.period.count) : ''}
                     </Text>
                   ) : null}
                 </View>
-                <Text style={{ color: c.text, fontWeight: '800', fontSize: 16 }}>{sp.priceString}</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ color: isCurrent && canSwitch ? c.muted : c.text, fontWeight: '800', fontSize: 17 }}>{sp.priceString}</Text>
+                  {sp.period ? <Text style={{ color: c.muted, fontSize: 11 }}>{s.every(sp.period.unit, sp.period.count)}</Text> : null}
+                </View>
               </Pressable>
             );
           })}
@@ -189,19 +210,23 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
             <Text style={{ color: c.text, fontSize: 14 }}>{switchBlocked}</Text>
           </View>
         ) : null}
-        {codeOpen ? (
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TextInput accessibilityLabel={s.enterCode} value={code} onChangeText={setCode} placeholder={s.enterCode} placeholderTextColor={c.muted} autoCapitalize="characters"
-              style={{ flex: 1, minHeight: 48, borderRadius: c.radius, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface, paddingHorizontal: 14, fontSize: 16, color: c.text }} />
-            <Pressable accessibilityRole="button" onPress={applyCode} disabled={!code.trim()} style={{ minHeight: 48, paddingHorizontal: 18, justifyContent: 'center', borderRadius: c.radius, backgroundColor: c.accent, opacity: code.trim() ? 1 : 0.5 }}>
-              <Text style={{ color: c.onAccent, fontWeight: '800' }}>{s.apply}</Text>
-            </Pressable>
-          </View>
-        ) : (
-          sub.canRedeemCode && link(s.haveCode, openCode)
-        )}
-        {link(busy === 'restore' ? s.restoring : s.restore, () => void restore(), busy !== '')}
-        {sub.paid && link(s.manage, () => void sub.openManage())}
+        {!compareFirst && compare}
+        <View style={[{ backgroundColor: c.surface, borderRadius: c.radius, padding: 14, gap: 4 }, lift]}>
+          <Text style={{ color: c.text, fontSize: 15, fontWeight: '800', textAlign: 'center' }}>{s.alreadySubscribed}</Text>
+          {link(busy === 'restore' ? s.restoring : s.restore, () => void restore(), busy !== '')}
+          {codeOpen ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TextInput accessibilityLabel={s.enterCode} value={code} onChangeText={setCode} placeholder={s.enterCode} placeholderTextColor={c.muted} autoCapitalize="characters"
+                style={{ flex: 1, minHeight: 48, borderRadius: c.radius, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface, paddingHorizontal: 14, fontSize: 16, color: c.text }} />
+              <Pressable accessibilityRole="button" onPress={applyCode} disabled={!code.trim()} style={{ minHeight: 48, paddingHorizontal: 18, justifyContent: 'center', borderRadius: c.radius, backgroundColor: c.accent, opacity: code.trim() ? 1 : 0.5 }}>
+                <Text style={{ color: c.onAccent, fontWeight: '800' }}>{s.apply}</Text>
+              </Pressable>
+            </View>
+          ) : (
+            sub.canRedeemCode && link(s.haveCode, openCode)
+          )}
+          {sub.paid && link(s.manage, () => (onManage ? onManage() : void sub.openManage()))}
+        </View>
         {note && (
           <View accessibilityLiveRegion="polite" style={{ backgroundColor: note.good ? c.good : c.warn, borderRadius: c.radius, padding: 12 }}>
             <Text style={{ color: c.text, fontSize: 14 }}>{note.text}</Text>
@@ -215,10 +240,10 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
         </Text>
       </ScrollView>
 
-      <View style={{ gap: 6, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 12, borderTopWidth: 1, borderTopColor: c.border, backgroundColor: c.surface }}>
+      <View style={[{ gap: 6, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 12, backgroundColor: c.surface }, c.shadow ? { boxShadow: '0 -6px 20px rgba(0,0,0,0.06)' } : { borderTopWidth: 1, borderTopColor: c.border }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: locked, busy: busy === 'buy' }} onPress={() => void buy()} disabled={locked || busy !== ''}
-          style={{ minHeight: 52, borderRadius: c.radius, alignItems: 'center', justifyContent: 'center', backgroundColor: c.accent, opacity: locked ? 0.5 : 1 }}>
-          <Text style={{ color: c.onAccent, fontWeight: '800', fontSize: 16 }}>{busy === 'buy' ? '…' : label}</Text>
+          style={{ minHeight: 52, borderRadius: c.shadow ? 26 : c.radius, alignItems: 'center', justifyContent: 'center', backgroundColor: button, opacity: locked ? 0.5 : 1 }}>
+          <Text style={{ color: onButton, fontWeight: '800', fontSize: 16 }}>{busy === 'buy' ? '…' : label}</Text>
         </Pressable>
         {priced && priced.sp.period && <Text style={{ fontSize: 12, color: c.muted, textAlign: 'center' }}>{s.thenPrice(priced.sp.priceString, s.every(priced.sp.period.unit, priced.sp.period.count), trial)}</Text>}
       </View>

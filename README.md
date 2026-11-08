@@ -71,7 +71,9 @@ Keep the limits that matter on the server too (app-payments-kit's `has_tier()` i
 
 ## Current plan and switching
 
-Pass `currentPlanId` (the plan the account pays for) and the Plans screen marks it **Current plan**, picks it by default and prices the line under the button by it. With `onSwitch`, a subscriber can pick another plan of the same tier and press **Switch to …**; the app decides what that does (explain when the change applies, then open the store's or the checkout's own page). Pass `switchBlocked` with a sentence when the plan was bought somewhere this device can't change it (another store): other plans stay locked and the sentence is shown.
+Pass `currentPlanId` (the plan the account pays for) and the Plans screen marks it **Current plan**, and the Free vs paid table puts a **CURRENT** badge over the account's tier. With `onSwitch`, the current plan is greyed out and can't be picked, the best other length (its `badge`, then `selected`, then the first) is picked to start with, and the button says **Switch to …**; the app decides what that does (explain when the change applies, then open the store's or the checkout's own page). Without `onSwitch`, or with `switchBlocked` (a sentence for a plan bought somewhere this device can't change, such as another store), the current plan stays picked, the others are locked, and the line under the button shows the current price.
+
+Pass `onManage` to show your own sheet before the store's manage page (for example a simple "cancel" sheet that says what happens), and change `strings.manage` to match (for example "Turn renewal back on" after a cancel).
 
 ## On the website
 
@@ -80,6 +82,8 @@ With app-payments-kit's RevenueCat web provider (`revenueCatWeb`), the same Plan
 ## Look and words
 
 Every screen takes `theme` (colors, radius), `strings` (every word, for rewording or translation) and `components` (`Text`, for your fonts). Pass only what differs. The default is the gold Premium look.
+
+The Plans screen shows the plans first, then the Free vs paid table (`compareFirst` puts the table on top), then a box with restore, codes and manage. `theme.shadow` (a CSS box-shadow) makes cards float with no outline; `theme.button` / `theme.onButton` color the main button (the accent by default).
 
 ## Testing
 

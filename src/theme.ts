@@ -20,6 +20,11 @@ export interface SubscriptionTheme {
   good: string;
   warn: string;
   radius: number;
+  /** The main button (defaults to the accent). */
+  button?: string;
+  onButton?: string;
+  /** A CSS box-shadow for cards. Set it and cards drop their outline and float instead (a flat outline when empty). */
+  shadow?: string;
 }
 
 export const DEFAULT_THEME: SubscriptionTheme = {
@@ -54,6 +59,12 @@ export interface SubscriptionStrings {
   switchPlan: (planLabel: string) => string;
   /** Badge on the plan the account is on now. */
   currentPlan: string;
+  /** Badge over the account's own column in the Free vs paid table. */
+  current: string;
+  /** Title of the box with restore, codes and manage. */
+  alreadySubscribed: string;
+  /** Heading over the Free vs paid table. */
+  compareTitle: string;
   youHave: (tierLabel: string) => string;
   thenPrice: (price: string, every: string, trialDays: number | null) => string;
   every: (unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR', count: number) => string;
@@ -102,6 +113,9 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   switchTo: (t) => `Switch to ${t}`,
   switchPlan: (p) => `Switch to ${p}`,
   currentPlan: 'Current plan',
+  current: 'Current',
+  alreadySubscribed: 'Already subscribed?',
+  compareTitle: 'Compare plans',
   youHave: (t) => `You have ${t}`,
   thenPrice: (p, every, trial) => `${trial ? `Free for ${trial} days, then ` : ''}${p} ${every}. Cancel any time.`,
   every: (u, n) => (n === 1 ? `a ${UNIT[u]}` : `every ${n} ${UNIT[u]}s`),
