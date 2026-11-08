@@ -50,6 +50,10 @@ export interface SubscriptionStrings {
   startTrial: (days: number) => string;
   upgrade: (tierLabel: string) => string;
   switchTo: (tierLabel: string) => string;
+  /** Button when a subscriber picks another length of the same tier. */
+  switchPlan: (planLabel: string) => string;
+  /** Badge on the plan the account is on now. */
+  currentPlan: string;
   youHave: (tierLabel: string) => string;
   thenPrice: (price: string, every: string, trialDays: number | null) => string;
   every: (unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR', count: number) => string;
@@ -96,6 +100,8 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   startTrial: (d) => `Start ${d}-day free trial`,
   upgrade: (t) => `Upgrade to ${t}`,
   switchTo: (t) => `Switch to ${t}`,
+  switchPlan: (p) => `Switch to ${p}`,
+  currentPlan: 'Current plan',
   youHave: (t) => `You have ${t}`,
   thenPrice: (p, every, trial) => `${trial ? `Free for ${trial} days, then ` : ''}${p} ${every}. Cancel any time.`,
   every: (u, n) => (n === 1 ? `a ${UNIT[u]}` : `every ${n} ${UNIT[u]}s`),

@@ -69,6 +69,10 @@ if (!canUse('practiceTest')) return <PremiumGate feature="practiceTest" name="Pr
 
 Keep the limits that matter on the server too (app-payments-kit's `has_tier()` in a database trigger): the phone's answer is for showing locks.
 
+## Current plan and switching
+
+Pass `currentPlanId` (the plan the account pays for) and the Plans screen marks it **Current plan**, picks it by default and prices the line under the button by it. With `onSwitch`, a subscriber can pick another plan of the same tier and press **Switch to …**; the app decides what that does (explain when the change applies, then open the store's or the checkout's own page). Pass `switchBlocked` with a sentence when the plan was bought somewhere this device can't change it (another store): other plans stay locked and the sentence is shown.
+
 ## On the website
 
 With app-payments-kit's RevenueCat web provider (`revenueCatWeb`), the same Plans screen sells on the website with card checkout. The website has no store codes, so "Have a code?" is hidden there (`payments.canRedeemCode` is false; any payments object can set it). Restore and Manage work the same.
