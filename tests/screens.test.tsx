@@ -45,6 +45,32 @@ describe('PlansScreen', () => {
     expect(m.shown('You have Premium')).toBe(true);
   });
 
+  it('marks the current plan, prices the footer by it, and offers a switch to another length', async () => {
+    const payments = fakePayments();
+    const onSwitch = vi.fn();
+    const m = await mount(app(<PlansScreen {...legal} currentPlanId="monthly" onSwitch={onSwitch} />, payments));
+    await payments.emit({ tier: 'premium' });
+    expect(m.shown('Current plan')).toBe(true);
+    expect(m.shown('You have Premium')).toBe(true);
+    // The monthly price, not the yearly row's.
+    expect(m.shown('$6.99 a month. Cancel any time.')).toBe(true);
+    expect(m.texts().some((t) => t.includes('$39.99 a year'))).toBe(false);
+    await press(m.label('Yearly, $39.99'));
+    expect(m.shown('Switch to Yearly')).toBe(true);
+    await press(m.label('Switch to Yearly'));
+    expect(onSwitch).toHaveBeenCalledWith(expect.objectContaining({ id: 'yearly' }));
+    expect(payments.buy).not.toHaveBeenCalled();
+  });
+
+  it('keeps other plans locked while subscribed when switching is not offered or blocked', async () => {
+    const payments = fakePayments();
+    const m = await mount(app(<PlansScreen {...legal} currentPlanId="monthly" onSwitch={vi.fn()} switchBlocked="Change your plan where you bought it." />, payments));
+    await payments.emit({ tier: 'premium' });
+    expect(m.shown('Change your plan where you bought it.')).toBe(true);
+    expect(m.label('Yearly, $39.99')!.props.disabled).toBe(true);
+    expect(m.shown('Switch to Yearly')).toBe(false);
+  });
+
   it('shows the store message on failure and nothing on cancel', async () => {
     const payments = fakePayments({ buy: vi.fn(async () => ({ ok: false as const, cancelled: false, message: 'No internet connection.' })) });
     const m = await mount(app(<PlansScreen {...legal} />, payments));

@@ -21,13 +21,26 @@ export interface PlansScreenProps extends LookProps {
   onUnlocked?: (tier: string) => void;
   /** Hide the Free vs paid table. */
   hideCompare?: boolean;
+  /**
+   * The plan id (from the config) the account pays for now. Its row gets a "Current plan" badge, is picked by default,
+   * and the price under the button is its price. Leave out when unknown (a tester grant, a code).
+   */
+  currentPlanId?: string | null;
+  /**
+   * Called when a subscriber picks another plan of the tier they have and presses "Switch to …". The app explains when
+   * the change applies and sends the person to where it is made (the store's or the checkout's own page).
+   * Left out: other plans can't be picked while subscribed.
+   */
+  onSwitch?: (plan: StorePlan) => void | Promise<void>;
+  /** Shown instead of switching when the plan was bought somewhere this device can't change (another store). */
+  switchBlocked?: string | null;
 }
 
 /**
  * The Plans screen: the store's real prices, a trial only when this person can still use it, restore, codes,
  * manage, and the wording and links Apple and Google ask for.
  */
-export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previewPlans, initialTier, onUnlocked, hideCompare, ...look }: PlansScreenProps) {
+export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previewPlans, initialTier, onUnlocked, hideCompare, currentPlanId, onSwitch, switchBlocked, ...look }: PlansScreenProps) {
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
   const { config } = sub;
@@ -59,12 +72,19 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
     () => config.plans.filter((p) => p.tier === tab).flatMap((p) => { const sp = source.find((x) => x.id === p.id); return sp ? [{ cfg: p, sp }] : []; }),
     [config.plans, tab, source],
   );
-  const chosen = shown.find((x) => x.cfg.id === pick) ?? shown.find((x) => x.cfg.selected) ?? shown[0];
-  const live = sub.ready && store.length > 0;
   const has = rank(config, sub.tier) >= rank(config, tab);
+  // The row the account pays for now, only on the tab of the tier it has.
+  const current = has && currentPlanId && sub.tier === tab ? shown.find((x) => x.cfg.id === currentPlanId) ?? null : null;
+  const canSwitch = !!current && !!onSwitch && !switchBlocked;
+  const chosen = shown.find((x) => x.cfg.id === pick) ?? current ?? shown.find((x) => x.cfg.selected) ?? shown[0];
+  const switching = canSwitch && !!chosen && chosen.cfg.id !== current!.cfg.id;
+  const live = sub.ready && store.length > 0;
   const tabLabel = config.tierLabels[tab]!;
   const trial = !sub.paid ? chosen?.sp.trialDays ?? null : null;
-  const label = has ? s.youHave(config.tierLabels[sub.tier]!) : trial ? s.startTrial(trial) : sub.paid ? s.switchTo(tabLabel) : s.upgrade(tabLabel);
+  const label = switching ? s.switchPlan(chosen!.cfg.label) : has ? s.youHave(config.tierLabels[sub.tier]!) : trial ? s.startTrial(trial) : sub.paid ? s.switchTo(tabLabel) : s.upgrade(tabLabel);
+  // While subscribed, the price under the button is the current plan's, or the one being switched to; never a row just looked at.
+  const priced = !has ? chosen : switching ? chosen : current;
+  const locked = has && !switching;
 
   const after = (r: PurchaseResult, success: string, nothing: string) => {
     if (r.ok) {
@@ -75,6 +95,11 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   };
   const notYet = () => setNote({ text: sub.ready ? s.pricesFailed : s.notOpenYet, good: false });
   const buy = async () => {
+    if (switching) {
+      setBusy('buy'); setNote(null);
+      try { await onSwitch!(chosen!.sp); } finally { setBusy(''); }
+      return;
+    }
     if (!live || !chosen) return notYet();
     setBusy('buy'); setNote(null);
     after(await sub.buy(chosen.sp), s.welcome(tabLabel), s.boughtNotActive);
@@ -132,16 +157,20 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
         <View accessibilityRole="radiogroup" style={{ gap: 10 }}>
           {shown.map(({ cfg, sp }) => {
             const on = cfg.id === chosen?.cfg.id;
+            const isCurrent = cfg.id === current?.cfg.id;
+            // While subscribed, only the current plan (and, where switching is offered, the others) can be picked.
+            const pickable = !has || isCurrent || canSwitch;
             const pm = perMonth(sp);
             const saved = savings(sp, source);
             return (
-              <Pressable key={cfg.id} accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={`${cfg.label}, ${sp.priceString}`} onPress={() => setPick(cfg.id)}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: c.radius + 2, borderWidth: on ? 2 : 1, borderColor: on ? c.accent : c.border, backgroundColor: c.surface }}>
+              <Pressable key={cfg.id} accessibilityRole="radio" accessibilityState={{ checked: on, disabled: !pickable }} accessibilityLabel={`${cfg.label}, ${sp.priceString}${isCurrent ? `, ${s.currentPlan}` : ''}`} onPress={() => setPick(cfg.id)} disabled={!pickable}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: c.radius + 2, borderWidth: on ? 2 : 1, borderColor: on ? c.accent : c.border, backgroundColor: c.surface, opacity: pickable ? 1 : 0.6 }}>
                 <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: on ? 6 : 2, borderColor: on ? c.accent : c.border }} />
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <Text style={{ color: c.text, fontWeight: '800', fontSize: 16 }}>{cfg.label}</Text>
-                    {cfg.badge ? <Text style={{ fontSize: 11, fontWeight: '800', color: c.onPremium, backgroundColor: c.premium, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, overflow: 'hidden' }}>{cfg.badge}</Text> : null}
+                    {isCurrent ? <Text style={{ fontSize: 11, fontWeight: '800', color: c.onAccent, backgroundColor: c.accent, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, overflow: 'hidden' }}>{s.currentPlan}</Text> : null}
+                    {cfg.badge && !isCurrent ? <Text style={{ fontSize: 11, fontWeight: '800', color: c.onPremium, backgroundColor: c.premium, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, overflow: 'hidden' }}>{cfg.badge}</Text> : null}
                   </View>
                   {pm !== null || sp.period ? (
                     <Text style={{ color: c.muted, fontSize: 13 }}>
@@ -155,6 +184,11 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
           })}
         </View>
 
+        {has && current && switchBlocked ? (
+          <View style={{ backgroundColor: c.premiumSoft, borderRadius: c.radius, padding: 12 }}>
+            <Text style={{ color: c.text, fontSize: 14 }}>{switchBlocked}</Text>
+          </View>
+        ) : null}
         {codeOpen ? (
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TextInput accessibilityLabel={s.enterCode} value={code} onChangeText={setCode} placeholder={s.enterCode} placeholderTextColor={c.muted} autoCapitalize="characters"
@@ -182,11 +216,11 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
       </ScrollView>
 
       <View style={{ gap: 6, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 12, borderTopWidth: 1, borderTopColor: c.border, backgroundColor: c.surface }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: has, busy: busy === 'buy' }} onPress={() => void buy()} disabled={has || busy !== ''}
-          style={{ minHeight: 52, borderRadius: c.radius, alignItems: 'center', justifyContent: 'center', backgroundColor: c.accent, opacity: has ? 0.5 : 1 }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: locked, busy: busy === 'buy' }} onPress={() => void buy()} disabled={locked || busy !== ''}
+          style={{ minHeight: 52, borderRadius: c.radius, alignItems: 'center', justifyContent: 'center', backgroundColor: c.accent, opacity: locked ? 0.5 : 1 }}>
           <Text style={{ color: c.onAccent, fontWeight: '800', fontSize: 16 }}>{busy === 'buy' ? '…' : label}</Text>
         </Pressable>
-        {chosen && chosen.sp.period && <Text style={{ fontSize: 12, color: c.muted, textAlign: 'center' }}>{s.thenPrice(chosen.sp.priceString, s.every(chosen.sp.period.unit, chosen.sp.period.count), trial)}</Text>}
+        {priced && priced.sp.period && <Text style={{ fontSize: 12, color: c.muted, textAlign: 'center' }}>{s.thenPrice(priced.sp.priceString, s.every(priced.sp.period.unit, priced.sp.period.count), trial)}</Text>}
       </View>
     </View>
   );
