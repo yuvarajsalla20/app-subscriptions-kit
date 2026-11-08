@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CompareTable, PlansScreen, PremiumGate, SubscriptionProvider, SubscriptionRow, defineSubscription, usePremium, type SubscriptionConfig } from '../src';
+import { CompareTable, PlansScreen, PremiumGate, SubscriptionProvider, SubscriptionRow, defineSubscription, months, usePremium, type StorePlan, type SubscriptionConfig } from '../src';
 import { fakePayments, mount, plan, press } from './render';
-import { Platform } from './stubs/react-native';
+import { Platform, Text } from './stubs/react-native';
 
 const config = defineSubscription({
   features: { practiceTest: 'premium' },
@@ -59,6 +59,27 @@ describe('PlansScreen', () => {
     await press(m.label('Switch to Yearly'));
     expect(onSwitch).toHaveBeenCalledWith(expect.objectContaining({ id: 'yearly' }));
     expect(payments.buy).not.toHaveBeenCalled();
+  });
+
+  it('offers only the plans the app allows, and no switch at all when none is allowed', async () => {
+    const longer = (from: StorePlan, to: StorePlan) => (months(to) ?? 0) > (months(from) ?? 0);
+    const payments = fakePayments();
+    const m = await mount(app(<PlansScreen {...legal} currentPlanId="yearly" onSwitch={vi.fn()} canSwitchTo={longer} currentMark={<Text>MARK</Text>} />, payments));
+    await payments.emit({ tier: 'premium' });
+    // Yearly is the longest: nothing shorter is offered, the yearly row stays picked and the button says so.
+    expect(m.shown('You have Premium')).toBe(true);
+    expect(m.texts().some((t) => t.startsWith('Switch to'))).toBe(false);
+    expect(m.label('Monthly, $6.99')!.props.disabled).toBe(true);
+    expect(m.shown('MARK')).toBe(true);
+  });
+
+  it('lets a monthly member switch only to a longer plan when the app asks for that', async () => {
+    const longer = (from: StorePlan, to: StorePlan) => (months(to) ?? 0) > (months(from) ?? 0);
+    const payments = fakePayments();
+    const m = await mount(app(<PlansScreen {...legal} currentPlanId="monthly" onSwitch={vi.fn()} canSwitchTo={longer} />, payments));
+    await payments.emit({ tier: 'premium' });
+    expect(m.shown('Switch to Yearly')).toBe(true);
+    expect(m.label('Yearly, $39.99')!.props.disabled).toBe(false);
   });
 
   it('prices the footer by the current plan when switching is not offered', async () => {

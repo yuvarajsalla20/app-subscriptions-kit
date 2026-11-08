@@ -32,6 +32,13 @@ export interface PlansScreenProps extends LookProps {
    * Left out: other plans can't be picked while subscribed.
    */
   onSwitch?: (plan: StorePlan) => void | Promise<void>;
+  /**
+   * Which other plans a subscriber may switch to (default: all of the same tier). For example, only longer plans, so a
+   * yearly member is never invited to move down to a shorter one. With no plan allowed, no switch is offered at all.
+   */
+  canSwitchTo?: (from: StorePlan, to: StorePlan) => boolean;
+  /** Drawn next to the current plan's name (for example, the app's Premium icon). */
+  currentMark?: ReactNode;
   /** Shown instead of switching when the plan was bought somewhere this device can't change (another store). */
   switchBlocked?: string | null;
   /** Replaces the default "Manage or cancel" action (for example, to show the app's own cancel sheet first). */
@@ -44,7 +51,7 @@ export interface PlansScreenProps extends LookProps {
  * The Plans screen: the store's real prices, a trial only when this person can still use it, restore, codes,
  * manage, and the wording and links Apple and Google ask for.
  */
-export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previewPlans, initialTier, onUnlocked, hideCompare, currentPlanId, onSwitch, switchBlocked, onManage, compareFirst, ...look }: PlansScreenProps) {
+export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previewPlans, initialTier, onUnlocked, hideCompare, currentPlanId, onSwitch, canSwitchTo, currentMark, switchBlocked, onManage, compareFirst, ...look }: PlansScreenProps) {
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
   const { config } = sub;
@@ -55,7 +62,8 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   const [tries, setTries] = useState(0);
   const [pick, setPick] = useState<string | null>(null);
   const [busy, setBusy] = useState<'' | 'buy' | 'restore'>('');
-  const [note, setNote] = useState<{ text: string; good: boolean } | null>(null);
+  // Where the answer shows: under the restore and code links, or above the main button after a purchase.
+  const [note, setNote] = useState<{ text: string; good: boolean; at: 'box' | 'footer' } | null>(null);
   const [codeOpen, setCodeOpen] = useState(false);
   const [code, setCode] = useState('');
 
@@ -79,9 +87,11 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   const has = rank(config, sub.tier) >= rank(config, tab);
   // The row the account pays for now, only on the tab of the tier it has.
   const current = has && currentPlanId && sub.tier === tab ? shown.find((x) => x.cfg.id === currentPlanId) ?? null : null;
-  const canSwitch = !!current && !!onSwitch && !switchBlocked;
-  // While switching is offered, the current plan is greyed out and the best other plan is picked to start with.
-  const others = canSwitch ? shown.filter((x) => x.cfg.id !== current!.cfg.id) : shown;
+  // The plans a subscriber may move to: the same tier's others, narrowed by the app (for example, longer plans only).
+  const targets = current ? shown.filter((x) => x.cfg.id !== current.cfg.id && (!canSwitchTo || canSwitchTo(current.sp, x.sp))) : [];
+  const canSwitch = !!current && !!onSwitch && !switchBlocked && targets.length > 0;
+  // While switching is offered, the current plan is greyed out and the best allowed plan is picked to start with.
+  const others = canSwitch ? targets : shown;
   const chosen = shown.find((x) => x.cfg.id === pick && !(canSwitch && x.cfg.id === current!.cfg.id))
     ?? (canSwitch ? others.find((x) => x.cfg.badge) ?? others.find((x) => x.cfg.selected) ?? others[0] : current ?? shown.find((x) => x.cfg.selected) ?? shown[0]);
   const switching = canSwitch && !!chosen && chosen.cfg.id !== current!.cfg.id;
@@ -93,35 +103,35 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   const priced = !has ? chosen : switching ? chosen : current;
   const locked = has && !switching;
 
-  const after = (r: PurchaseResult, success: string, nothing: string) => {
+  const after = (r: PurchaseResult, success: string, nothing: string, at: 'box' | 'footer') => {
     if (r.ok) {
       const on = rank(config, r.tier) > 0;
-      setNote({ text: on ? success : nothing, good: on });
+      setNote({ text: on ? success : nothing, good: on, at });
       if (on) onUnlocked?.(r.tier);
-    } else if (!r.cancelled) setNote({ text: r.message, good: false });
+    } else if (!r.cancelled) setNote({ text: r.message, good: false, at });
   };
-  const notYet = () => setNote({ text: sub.ready ? s.pricesFailed : s.notOpenYet, good: false });
+  const notYet = (at: 'box' | 'footer') => setNote({ text: sub.ready ? s.pricesFailed : s.notOpenYet, good: false, at });
   const buy = async () => {
     if (switching) {
       setBusy('buy'); setNote(null);
       try { await onSwitch!(chosen!.sp); } finally { setBusy(''); }
       return;
     }
-    if (!live || !chosen) return notYet();
+    if (!live || !chosen) return notYet('footer');
     setBusy('buy'); setNote(null);
-    after(await sub.buy(chosen.sp), s.welcome(tabLabel), s.boughtNotActive);
+    after(await sub.buy(chosen.sp), s.welcome(tabLabel), s.boughtNotActive, 'footer');
     setBusy('');
   };
   const restore = async () => {
-    if (!sub.ready) return notYet();
+    if (!sub.ready) return notYet('box');
     setBusy('restore'); setNote(null);
     const r = await sub.restore();
-    after(r, s.restored(r.ok ? config.tierLabels[r.tier] ?? '' : ''), s.nothingToRestore);
+    after(r, s.restored(r.ok ? config.tierLabels[r.tier] ?? '' : ''), s.nothingToRestore, 'box');
     setBusy('');
   };
   // iPhone shows Apple's own code sheet; elsewhere the code is typed here and sent to the store.
   const openCode = () => (sub.ready && Platform.OS === 'ios' ? void sub.redeemCode('') : setCodeOpen(true));
-  const applyCode = () => (sub.ready ? void sub.redeemCode(code) : notYet());
+  const applyCode = () => (sub.ready ? void sub.redeemCode(code) : notYet('box'));
 
   const lift = c.shadow ? { boxShadow: c.shadow } : { borderWidth: 1, borderColor: c.border };
   const button = c.button ?? c.accent;
@@ -174,8 +184,8 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
           {shown.map(({ cfg, sp }) => {
             const on = cfg.id === chosen?.cfg.id;
             const isCurrent = cfg.id === current?.cfg.id;
-            // While subscribed, the other plans can be picked only where switching is offered; the current one never then.
-            const pickable = !has || (canSwitch ? !isCurrent : isCurrent);
+            // While subscribed, only the allowed other plans can be picked where switching is offered; the current one never then.
+            const pickable = !has || (canSwitch ? targets.some((x) => x.cfg.id === cfg.id) : isCurrent);
             const pm = perMonth(sp);
             const saved = savings(sp, source);
             const tag = isCurrent ? s.currentPlan : cfg.badge;
@@ -189,7 +199,10 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
                 ) : null}
                 <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: on ? 6 : 2, borderColor: on ? c.accent : c.border }} />
                 <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={{ color: isCurrent && canSwitch ? c.muted : c.text, fontWeight: '800', fontSize: 16 }}>{cfg.label}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={{ color: isCurrent && canSwitch ? c.muted : c.text, fontWeight: '800', fontSize: 16 }}>{cfg.label}</Text>
+                    {isCurrent && currentMark ? currentMark : null}
+                  </View>
                   {pm !== null || sp.period ? (
                     <Text style={{ color: c.muted, fontSize: 13 }}>
                       {pm !== null ? `${s.perMonth(money(pm, sp.currency))}${saved ? ` · ${s.save(saved)}` : ''}` : sp.period ? s.every(sp.period.unit, sp.period.count) : ''}
@@ -226,12 +239,13 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
             sub.canRedeemCode && link(s.haveCode, openCode)
           )}
           {sub.paid && link(s.manage, () => (onManage ? onManage() : void sub.openManage()))}
+          {/* The answer to restore, a code or a purchase shows right here, under the link just tapped, never off screen. */}
+          {note?.at === 'box' && (
+            <View accessibilityLiveRegion="polite" style={{ backgroundColor: note.good ? c.good : c.warn, borderRadius: c.radius, padding: 12, marginTop: 4 }}>
+              <Text style={{ color: c.text, fontSize: 14, textAlign: 'center' }}>{note.text}</Text>
+            </View>
+          )}
         </View>
-        {note && (
-          <View accessibilityLiveRegion="polite" style={{ backgroundColor: note.good ? c.good : c.warn, borderRadius: c.radius, padding: 12 }}>
-            <Text style={{ color: c.text, fontSize: 14 }}>{note.text}</Text>
-          </View>
-        )}
         <Text style={{ fontSize: 11, lineHeight: 16, color: c.muted }}>
           {s.legal(!!trial)}
           <Text accessibilityRole="link" style={{ color: c.accent, fontWeight: '600' }} onPress={onOpenTerms}>{s.terms}</Text>
@@ -241,6 +255,11 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
       </ScrollView>
 
       <View style={[{ gap: 6, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 12, backgroundColor: c.surface }, c.shadow ? { boxShadow: '0 -6px 20px rgba(0,0,0,0.06)' } : { borderTopWidth: 1, borderTopColor: c.border }]}>
+        {note?.at === 'footer' && (
+          <View accessibilityLiveRegion="polite" style={{ backgroundColor: note.good ? c.good : c.warn, borderRadius: c.radius, padding: 12 }}>
+            <Text style={{ color: c.text, fontSize: 14, textAlign: 'center' }}>{note.text}</Text>
+          </View>
+        )}
         <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: locked, busy: busy === 'buy' }} onPress={() => void buy()} disabled={locked || busy !== ''}
           style={{ minHeight: 52, borderRadius: c.shadow ? 26 : c.radius, alignItems: 'center', justifyContent: 'center', backgroundColor: button, opacity: locked ? 0.5 : 1 }}>
           <Text style={{ color: onButton, fontWeight: '800', fontSize: 16 }}>{busy === 'buy' ? '…' : label}</Text>
