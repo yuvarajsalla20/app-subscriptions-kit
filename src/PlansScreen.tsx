@@ -90,7 +90,7 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   // The plans a subscriber may move to: the same tier's others, narrowed by the app (for example, longer plans only).
   const targets = current ? shown.filter((x) => x.cfg.id !== current.cfg.id && (!canSwitchTo || canSwitchTo(current.sp, x.sp))) : [];
   const canSwitch = !!current && !!onSwitch && !switchBlocked && targets.length > 0;
-  // While switching is offered, the current plan is greyed out and the best allowed plan is picked to start with.
+  // While switching is offered, the current plan can't be picked and the best allowed plan is picked to start with.
   const others = canSwitch ? targets : shown;
   const chosen = shown.find((x) => x.cfg.id === pick && !(canSwitch && x.cfg.id === current!.cfg.id))
     ?? (canSwitch ? others.find((x) => x.cfg.badge) ?? others.find((x) => x.cfg.selected) ?? others[0] : current ?? shown.find((x) => x.cfg.selected) ?? shown[0]);
@@ -191,16 +191,16 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
             const tag = isCurrent ? s.currentPlan : cfg.badge;
             return (
               <Pressable key={cfg.id} accessibilityRole="radio" accessibilityState={{ checked: on, disabled: !pickable }} accessibilityLabel={`${cfg.label}, ${sp.priceString}${isCurrent ? `, ${s.currentPlan}` : ''}`} onPress={() => setPick(cfg.id)} disabled={!pickable}
-                style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: tag ? 18 : 14, paddingBottom: 14, borderRadius: c.radius + 4, backgroundColor: isCurrent && canSwitch ? c.bg : c.surface, opacity: pickable || isCurrent ? 1 : 0.6 },
-                  on ? { borderWidth: 2, borderColor: c.accent } : isCurrent && canSwitch ? { borderWidth: 1, borderColor: c.border } : lift]}>
+                style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: tag ? 18 : 14, paddingBottom: 14, borderRadius: c.radius + 4, backgroundColor: isCurrent ? c.premiumSoft : c.surface, opacity: pickable || isCurrent ? 1 : 0.6 },
+                  isCurrent ? { borderWidth: 2, borderColor: c.premium } : on ? { borderWidth: 2, borderColor: c.accent } : lift]}>
                 {tag ? (
                   <Text style={{ position: 'absolute', top: -10, left: 14, fontSize: 11, fontWeight: '800', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10, overflow: 'hidden',
-                    color: isCurrent ? c.muted : c.onPremium, backgroundColor: isCurrent ? c.border : c.premium }}>{tag}</Text>
+                    color: c.onPremium, backgroundColor: c.premium }}>{tag}</Text>
                 ) : null}
                 <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: on ? 6 : 2, borderColor: on ? c.accent : c.border }} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={{ color: isCurrent && canSwitch ? c.muted : c.text, fontWeight: '800', fontSize: 16 }}>{cfg.label}</Text>
+                    <Text style={{ color: c.text, fontWeight: '800', fontSize: 16 }}>{cfg.label}</Text>
                     {isCurrent && currentMark ? currentMark : null}
                   </View>
                   {pm !== null || sp.period ? (
@@ -210,7 +210,7 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
                   ) : null}
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ color: isCurrent && canSwitch ? c.muted : c.text, fontWeight: '800', fontSize: 17 }}>{sp.priceString}</Text>
+                  <Text style={{ color: c.text, fontWeight: '800', fontSize: 17 }}>{sp.priceString}</Text>
                   {sp.period ? <Text style={{ color: c.muted, fontSize: 11 }}>{s.every(sp.period.unit, sp.period.count)}</Text> : null}
                 </View>
               </Pressable>
