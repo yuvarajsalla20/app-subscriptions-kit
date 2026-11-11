@@ -22,6 +22,37 @@ const app = (ui: React.ReactNode, payments = fakePayments(), c: SubscriptionConf
   </SubscriptionProvider>
 );
 
+describe('PlansScreen layout', () => {
+  type N = import('react-test-renderer').ReactTestInstance;
+  /** The nearest real element above this one (the test tree also holds components). */
+  const up = (n: N): N => {
+    let p = n.parent!;
+    while (typeof p.type !== 'string') p = p.parent!;
+    return p;
+  };
+  const sameRow = (a?: N, b?: N) => !!a && !!b && up(a) === up(b);
+
+  it('puts the app logo and Close in one row', async () => {
+    const m = await mount(app(<PlansScreen {...legal} onClose={() => undefined} header={<Text accessibilityLabel="logo">Logo</Text>} />));
+    const logo = m.label('logo')!;
+    const close = m.label('Close')!;
+    // Logo sits in a box that is a sibling of the Close button: one row, not two.
+    expect(up(up(logo))).toBe(up(close));
+  });
+
+  it('keeps Restore purchases and Have a code? on one line, with no Already subscribed box', async () => {
+    const m = await mount(app(<PlansScreen {...legal} />));
+    expect(m.shown('Already subscribed?')).toBe(false);
+    expect(sameRow(m.button('Restore purchases'), m.button('Have a code?'))).toBe(true);
+  });
+
+  it('puts the main button after the plans and table, inside the scroll, not pinned below it', async () => {
+    const m = await mount(app(<PlansScreen {...legal} />));
+    const scroll = m.root.root.findAll((n) => n.type === 'ScrollView')[0]!;
+    expect(scroll.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === 'Start 7-day free trial')).not.toHaveLength(0);
+  });
+});
+
 describe('PlansScreen', () => {
   it('shows store prices, the trial only when offered, and the required links', async () => {
     const m = await mount(app(<PlansScreen {...legal} />));
@@ -98,7 +129,7 @@ describe('PlansScreen', () => {
     await payments.emit({ tier: 'premium' });
     await press(m.button('Manage or cancel subscription'));
     expect(onManage).toHaveBeenCalled();
-    expect(m.shown('Already subscribed?')).toBe(true);
+    expect(m.shown('Restore purchases')).toBe(true);
   });
 
   it('keeps other plans locked while subscribed when switching is not offered or blocked', async () => {

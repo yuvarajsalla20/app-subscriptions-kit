@@ -85,7 +85,27 @@ With app-payments-kit's RevenueCat web provider (`revenueCatWeb`), the same Plan
 
 Every screen takes `theme` (colors, radius), `strings` (every word, for rewording or translation) and `components` (`Text`, for your fonts). Pass only what differs. The default is the gold Premium look.
 
-The Plans screen shows the plans first, then the Free vs paid table (`compareFirst` puts the table on top), then a box with restore, codes and manage. `theme.shadow` (a CSS box-shadow) makes cards float with no outline; `theme.button` / `theme.onButton` color the main button (the accent by default).
+The Plans screen has the app's logo (`header`) and Close in one row, then the plans, then the Free vs paid table (`compareFirst` puts the table on top), then the main button, then Restore, Have a code? and Manage on one line, then the legal line. `theme.shadow` (a CSS box-shadow) makes cards float with no outline; `theme.button` / `theme.onButton` color the main button (the accent by default).
+
+## Versions
+
+Every release is tagged in git (`v1.5.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+
+### 1.5.0
+
+The Plans screen is tighter. **The layout changed for every app that upgrades; nothing to change in code.**
+
+- The app's logo (`header`) and Close share the first row, with less padding above them. Before, Close had a row of its own above the logo.
+- Less space between the heading, the plans and the table.
+- The main button sits right under the plans and the table, inside the scroll, instead of being pinned to the bottom of the screen (so a message above it can no longer crowd it).
+- Restore purchases, Have a code? and Manage are on one line (they wrap on a narrow screen). The "Already subscribed?" box and its heading are gone; `strings.alreadySubscribed` is no longer shown but still accepted.
+- The legal line is centred.
+
+An app that draws the screen inside its own padded frame should drop the top padding it added for Close, or the space will show twice.
+
+### 1.4.1 and earlier
+
+See the git history.
 
 ## Testing
 

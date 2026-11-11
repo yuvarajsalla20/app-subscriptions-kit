@@ -150,15 +150,18 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-        {onClose && (
-          <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-            <Pressable accessibilityRole="button" accessibilityLabel={s.close} onPress={onClose} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 24, color: c.text }}>×</Text>
-            </Pressable>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: 16, gap: 10 }}>
+        {/* Row one: the app's logo on the left, Close on the right. */}
+        {header || onClose ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, alignItems: 'flex-start' }}>{header}</View>
+            {onClose && (
+              <Pressable accessibilityRole="button" accessibilityLabel={s.close} onPress={onClose} hitSlop={8} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 24, color: c.text }}>×</Text>
+              </Pressable>
+            )}
           </View>
-        )}
-        {header}
+        ) : null}
         {compareFirst && compare}
 
         {paidTiers.length > 1 && (
@@ -180,7 +183,7 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
         )}
         {!sub.ready && !previewPlans?.length && <Text style={{ color: c.muted, textAlign: 'center' }}>{s.notOpenYet}</Text>}
 
-        <View accessibilityRole="radiogroup" style={{ gap: 14, paddingTop: 6 }}>
+        <View accessibilityRole="radiogroup" style={{ gap: 12, paddingTop: 4 }}>
           {shown.map(({ cfg, sp }) => {
             const on = cfg.id === chosen?.cfg.id;
             const isCurrent = cfg.id === current?.cfg.id;
@@ -224,48 +227,47 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
           </View>
         ) : null}
         {!compareFirst && compare}
-        <View style={[{ backgroundColor: c.surface, borderRadius: c.radius, padding: 14, gap: 4 }, lift]}>
-          <Text style={{ color: c.text, fontSize: 15, fontWeight: '800', textAlign: 'center' }}>{s.alreadySubscribed}</Text>
-          {link(busy === 'restore' ? s.restoring : s.restore, () => void restore(), busy !== '')}
-          {codeOpen ? (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TextInput accessibilityLabel={s.enterCode} value={code} onChangeText={setCode} placeholder={s.enterCode} placeholderTextColor={c.muted} autoCapitalize="characters"
-                style={{ flex: 1, minHeight: 48, borderRadius: c.radius, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface, paddingHorizontal: 14, fontSize: 16, color: c.text }} />
-              <Pressable accessibilityRole="button" onPress={applyCode} disabled={!code.trim()} style={{ minHeight: 48, paddingHorizontal: 18, justifyContent: 'center', borderRadius: c.radius, backgroundColor: c.accent, opacity: code.trim() ? 1 : 0.5 }}>
-                <Text style={{ color: c.onAccent, fontWeight: '800' }}>{s.apply}</Text>
-              </Pressable>
-            </View>
-          ) : (
-            sub.canRedeemCode && link(s.haveCode, openCode)
-          )}
-          {sub.paid && link(s.manage, () => (onManage ? onManage() : void sub.openManage()))}
-          {/* The answer to restore, a code or a purchase shows right here, under the link just tapped, never off screen. */}
-          {note?.at === 'box' && (
-            <View accessibilityLiveRegion="polite" style={{ backgroundColor: note.good ? c.good : c.warn, borderRadius: c.radius, padding: 12, marginTop: 4 }}>
+        {/* The main button sits right under the plans and the table, not pinned to the bottom. */}
+        <View style={{ gap: 6 }}>
+          {note?.at === 'footer' && (
+            <View accessibilityLiveRegion="polite" style={{ backgroundColor: note.good ? c.good : c.warn, borderRadius: c.radius, padding: 12 }}>
               <Text style={{ color: c.text, fontSize: 14, textAlign: 'center' }}>{note.text}</Text>
             </View>
           )}
+          <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: locked, busy: busy === 'buy' }} onPress={() => void buy()} disabled={locked || busy !== ''}
+            style={{ minHeight: 52, borderRadius: c.shadow ? 26 : c.radius, alignItems: 'center', justifyContent: 'center', backgroundColor: button, opacity: locked ? 0.5 : 1 }}>
+            <Text style={{ color: onButton, fontWeight: '800', fontSize: 16 }}>{busy === 'buy' ? '…' : label}</Text>
+          </Pressable>
+          {priced && priced.sp.period && <Text style={{ fontSize: 12, color: c.muted, textAlign: 'center' }}>{s.thenPrice(priced.sp.priceString, s.every(priced.sp.period.unit, priced.sp.period.count), trial)}</Text>}
         </View>
-        <Text style={{ fontSize: 11, lineHeight: 16, color: c.muted }}>
+        {/* Restore, a code and Manage share one line; wraps on a narrow screen. */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 18 }}>
+          {link(busy === 'restore' ? s.restoring : s.restore, () => void restore(), busy !== '')}
+          {!codeOpen && sub.canRedeemCode && link(s.haveCode, openCode)}
+          {sub.paid && link(s.manage, () => (onManage ? onManage() : void sub.openManage()))}
+        </View>
+        {codeOpen && (
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TextInput accessibilityLabel={s.enterCode} value={code} onChangeText={setCode} placeholder={s.enterCode} placeholderTextColor={c.muted} autoCapitalize="characters"
+              style={{ flex: 1, minHeight: 48, borderRadius: c.radius, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface, paddingHorizontal: 14, fontSize: 16, color: c.text }} />
+            <Pressable accessibilityRole="button" onPress={applyCode} disabled={!code.trim()} style={{ minHeight: 48, paddingHorizontal: 18, justifyContent: 'center', borderRadius: c.radius, backgroundColor: c.accent, opacity: code.trim() ? 1 : 0.5 }}>
+              <Text style={{ color: c.onAccent, fontWeight: '800' }}>{s.apply}</Text>
+            </Pressable>
+          </View>
+        )}
+        {/* The answer to restore, a code or a purchase shows right here, under the links just tapped, never off screen. */}
+        {note?.at === 'box' && (
+          <View accessibilityLiveRegion="polite" style={{ backgroundColor: note.good ? c.good : c.warn, borderRadius: c.radius, padding: 12 }}>
+            <Text style={{ color: c.text, fontSize: 14, textAlign: 'center' }}>{note.text}</Text>
+          </View>
+        )}
+        <Text style={{ fontSize: 11, lineHeight: 16, color: c.muted, textAlign: 'center' }}>
           {s.legal(!!trial)}
           <Text accessibilityRole="link" style={{ color: c.accent, fontWeight: '600' }} onPress={onOpenTerms}>{s.terms}</Text>
           {' · '}
           <Text accessibilityRole="link" style={{ color: c.accent, fontWeight: '600' }} onPress={onOpenPrivacy}>{s.privacy}</Text>
         </Text>
       </ScrollView>
-
-      <View style={[{ gap: 6, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 12, backgroundColor: c.surface }, c.shadow ? { boxShadow: '0 -6px 20px rgba(0,0,0,0.06)' } : { borderTopWidth: 1, borderTopColor: c.border }]}>
-        {note?.at === 'footer' && (
-          <View accessibilityLiveRegion="polite" style={{ backgroundColor: note.good ? c.good : c.warn, borderRadius: c.radius, padding: 12 }}>
-            <Text style={{ color: c.text, fontSize: 14, textAlign: 'center' }}>{note.text}</Text>
-          </View>
-        )}
-        <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: locked, busy: busy === 'buy' }} onPress={() => void buy()} disabled={locked || busy !== ''}
-          style={{ minHeight: 52, borderRadius: c.shadow ? 26 : c.radius, alignItems: 'center', justifyContent: 'center', backgroundColor: button, opacity: locked ? 0.5 : 1 }}>
-          <Text style={{ color: onButton, fontWeight: '800', fontSize: 16 }}>{busy === 'buy' ? '…' : label}</Text>
-        </Pressable>
-        {priced && priced.sp.period && <Text style={{ fontSize: 12, color: c.muted, textAlign: 'center' }}>{s.thenPrice(priced.sp.priceString, s.every(priced.sp.period.unit, priced.sp.period.count), trial)}</Text>}
-      </View>
     </View>
   );
 }

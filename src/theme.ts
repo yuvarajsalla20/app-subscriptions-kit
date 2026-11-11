@@ -61,7 +61,7 @@ export interface SubscriptionStrings {
   currentPlan: string;
   /** Badge over the account's own column in the Free vs paid table. */
   current: string;
-  /** Title of the box with restore, codes and manage. */
+  /** Not shown since 1.5.0 (the box is gone: Restore and Have a code? are one line). Kept so existing `strings` still type-check. */
   alreadySubscribed: string;
   /** Heading over the Free vs paid table. */
   compareTitle: string;
