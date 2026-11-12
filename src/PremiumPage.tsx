@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, Switch, View } from 'react-native';
-import { Diamond, Lock, useLook, type LookProps } from './look';
+import { Crowns, Lock, useLook, type LookProps } from './look';
 import type { StoreOffer, StorePlan } from './payments';
 import { months, money, savings } from './pricing';
 import { SubscriptionStatusCard } from './StatusCard';
@@ -109,7 +109,9 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
 
   const card = { backgroundColor: c.surface, borderColor: c.border, borderWidth: 1, borderRadius: c.radius, overflow: 'hidden' as const };
   const line = { borderTopWidth: 1, borderTopColor: c.border };
-  const mark = (size: number) => icon ?? <Diamond color={c.premium} fill={c.premiumSoft} size={size} />;
+  const crowns = { king: c.king, kingFill: c.kingFill, queen: c.queen, queenFill: c.queenFill };
+  // The crowns are wider than tall, so they are drawn a little shorter than the space they sit in.
+  const mark = (size: number, outline = false) => icon ?? <Crowns size={Math.round(size * 0.75)} outline={outline} {...crowns} />;
   const tag = (text: string, bg: string) => (
     <View style={{ backgroundColor: bg, borderRadius: 9, paddingHorizontal: 8, paddingVertical: 3 }}>
       <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>{text}</Text>
@@ -265,7 +267,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
     <View style={card}>
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: isOpen }} onPress={() => setOpen(!isOpen)}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingVertical: 8, paddingHorizontal: 16 }}>
-        {mark(20)}
+        {mark(22, true)}
         <View style={{ flex: 1 }}>
           <Text style={{ color: c.text, fontSize: 16, fontWeight: '700' }}>{s.premiumFeatures(tierLabel)}</Text>
           <Text style={{ color: c.muted, fontSize: 13, marginTop: 2 }}>{isOpen ? s.featureCount(features.length) : `${s.featureCount(features.length)} · ${s.tapToSee}`}</Text>

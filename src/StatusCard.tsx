@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
-import { Diamond, useLook, type LookProps } from './look';
+import { Crowns, useLook, type LookProps } from './look';
 import { statusLines } from './status';
 import { useSubscription } from './SubscriptionProvider';
 
@@ -20,7 +20,7 @@ export function SubscriptionStatusCard({ icon, ...look }: LookProps & { icon?: R
       style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: c.radius + 8, backgroundColor: c.premiumSoft, borderWidth: 1, borderColor: c.premium }}
     >
       <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}>
-        {icon ?? <Diamond color={c.premium} fill={c.premiumSoft} size={26} />}
+        {icon ?? <Crowns size={20} king={c.king} kingFill={c.kingFill} queen={c.queen} queenFill={c.queenFill} />}
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ color: c.text, fontSize: 18, fontWeight: '800' }}>{l.title}</Text>

@@ -89,7 +89,12 @@ The Plans screen has the app's logo (`header`) and Close in one row, then the pl
 
 ## Versions
 
-Every release is tagged in git (`v1.10.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+Every release is tagged in git (`v1.11.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+
+### 1.11.0
+
+- The default Premium mark is now **a king and a queen crown** (`<Crowns>`), drawn with SVG, on the top card, the welcome card and the status card; an outline version heads the Premium Features row. It replaces the rotated-square `<Diamond>` (still exported). Colors: `theme.king`, `kingFill`, `queen`, `queenFill`. `icon` still replaces it.
+- Needs `react-native-svg` (a new peer dependency; Expo apps have it).
 
 ### 1.10.0
 
