@@ -33,3 +33,14 @@ export function savings(p: StorePlan, all: readonly StorePlan[]): number {
   if (!m || m <= 1 || !monthly) return 0;
   return Math.max(0, Math.floor(100 - (100 * p.price) / (monthly.price * m)));
 }
+
+/**
+ * Whether a store product id is this plan: "monthly", or "hringnring_monthly" / "com.app.monthly" (the plan id after a
+ * "_", "." or "-"). "bimonthly" is not "monthly". On Google Play the id may carry the base plan after a ":".
+ */
+export function isPlan(productId: string | null | undefined, planId: string): boolean {
+  const product = (productId ?? '').toLowerCase().split(':')[0]!;
+  const id = planId.toLowerCase();
+  if (!product || !id) return false;
+  return product === id || ['_', '.', '-'].some((sep) => product.endsWith(sep + id));
+}

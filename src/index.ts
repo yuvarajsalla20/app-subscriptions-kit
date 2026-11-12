@@ -1,6 +1,6 @@
 export { defineSubscription, type CompareRow, type LimitValue, type PlanConfig, type SubscriptionConfig, type SubscriptionConfigInput } from './define';
 export { allowed, atLeast, canUse, limitFor, rank, tierAllowing, tierFor } from './rules';
-export { money, months, perMonth, savings } from './pricing';
+export { isPlan, money, months, perMonth, savings } from './pricing';
 export { SubscriptionProvider, usePremium, useSubscription, useTier, type SubscriptionProviderProps, type SubscriptionState } from './SubscriptionProvider';
 export { LockBadge, PremiumGate, PremiumPill } from './badges';
 export { CompareTable } from './CompareTable';
