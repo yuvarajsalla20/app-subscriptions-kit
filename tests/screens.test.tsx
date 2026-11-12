@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CompareTable, PlansScreen, PremiumGate, SubscriptionProvider, SubscriptionRow, defineSubscription, months, usePremium, type StorePlan, type SubscriptionConfig } from '../src';
+import { CompareTable, PlansScreen, PremiumGate, SubscriptionProvider, SubscriptionRow, defineSubscription, months, usePremium, useSubscription, type StorePlan, type SubscriptionConfig } from '../src';
 import { fakePayments, mount, plan, press } from './render';
 import { Platform, Text } from './stubs/react-native';
 
@@ -100,6 +100,38 @@ describe('PlansScreen', () => {
     await payments.emit({ tier: 'premium' });
     await press(m.label('Switch to Yearly'));
     expect(m.shown('No connection')).toBe(true);
+  });
+
+  it('a switch that starts at renewal shows as booked until the store shows the new plan, and is kept between launches', async () => {
+    const saved = new Map<string, string>();
+    const storage = { getItem: vi.fn(async (k: string) => saved.get(k) ?? null), setItem: vi.fn(async (k: string, v: string) => { saved.set(k, v); }), removeItem: vi.fn(async (k: string) => { saved.delete(k); }) };
+    const monthly = { tier: 'premium', renewal: { until: '2099-12-12T10:00:00Z', willRenew: true, productId: 'app_monthly' } };
+    const Switcher = () => {
+      const sub = useSubscription();
+      return <PlansScreen {...legal} currentPlanId="monthly" onSwitch={(p) => sub.switchPlan(p)} />;
+    };
+    const payments = fakePayments();
+    const wrap = (ui: React.ReactNode) => <SubscriptionProvider config={config} payments={payments} userId="u1" storage={storage}>{ui}</SubscriptionProvider>;
+    const m = await mount(wrap(<Switcher />));
+    await payments.emit(monthly);
+    await press(m.label('Switch to Yearly'));
+    expect(payments.buy).toHaveBeenCalledOnce();
+    expect(m.shown('NEXT')).toBe(true);
+    expect(m.texts().some((x) => x.startsWith('Yearly Starts '))).toBe(true);
+    expect(m.texts().some((x) => x.startsWith('Your switch to Yearly is booked.'))).toBe(true);
+    expect(m.texts().some((x) => x.startsWith('✓ Yearly Starts '))).toBe(true);
+    expect(m.texts().some((x) => x.startsWith('Switch to'))).toBe(false);
+    expect([...saved.values()][0]).toContain('"planId":"yearly"');
+
+    // A new launch reads it back.
+    const again = await mount(wrap(<Switcher />));
+    await payments.emit(monthly);
+    expect(again.shown('NEXT')).toBe(true);
+
+    // Renewal on Yearly: the note goes and the saved copy with it.
+    await payments.emit({ tier: 'premium', renewal: { until: '2100-12-12T10:00:00Z', willRenew: true, productId: 'app_yearly' } });
+    expect(again.shown('NEXT')).toBe(false);
+    expect(saved.size).toBe(0);
   });
 
   it('offers only the plans the app allows, and no switch at all when none is allowed', async () => {

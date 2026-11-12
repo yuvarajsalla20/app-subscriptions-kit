@@ -117,6 +117,23 @@ describe('PremiumPage', () => {
     expect(m.shown('Stay for 50% Off')).toBe(false);
   });
 
+  it('a booked switch shows on the status card and in Change Plan', async () => {
+    const payments = fakePayments();
+    let switchTo: () => Promise<unknown> = async () => undefined;
+    const Grab = () => { const sub = useSubscription(); switchTo = () => sub.switchPlan(plan('yearly', 'premium', 39.99, 12)); return null; };
+    const m = await mount(
+      <SubscriptionProvider config={config} payments={payments} userId="u1">
+        <Grab />
+        <PremiumPage onOpenPlans={vi.fn()} features={features()} />
+      </SubscriptionProvider>,
+    );
+    await act(async () => payments.emit(renewing));
+    await act(async () => { await switchTo(); });
+    expect(m.texts().some((t) => t.startsWith('→ Switching to Yearly on '))).toBe(true);
+    expect(m.texts().some((t) => t.startsWith('Yearly Starts '))).toBe(true);
+    expect(m.shown('Save 52%')).toBe(false);
+  });
+
   it('a second tap on Cancel while the store sheet is open does nothing', async () => {
     let close: () => void = () => undefined;
     const payments = fakePayments({ openManage: vi.fn(() => new Promise<void>((r) => { close = r; })) });

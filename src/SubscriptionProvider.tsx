@@ -1,7 +1,23 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { LimitValue, SubscriptionConfig } from './define';
 import type { PaymentsLike, PurchaseResult, RenewalInfo, ServerInfo, StoreOffer, StorePlan, WatchState } from './payments';
+import { isPlan } from './pricing';
 import { allowed, atLeast, canUse, limitFor, rank, tierFor } from './rules';
+
+/** A plan change the store applies at the next renewal (a longer plan of the same level on the App Store). */
+export interface PendingSwitch {
+  /** The plan that comes next (a `config.plans` id). */
+  planId: string;
+  /** When it starts: the current plan's renewal date, if known. */
+  startsAt: string | null;
+}
+
+/** Where a booked switch is kept between launches. AsyncStorage fits as it is. */
+export interface SubscriptionStorage {
+  getItem(key: string): Promise<string | null>;
+  setItem(key: string, value: string): Promise<void>;
+  removeItem(key: string): Promise<void>;
+}
 
 export interface SubscriptionState {
   config: SubscriptionConfig;
@@ -35,6 +51,13 @@ export interface SubscriptionState {
   /** A subscriber discount by its store id; null when there is none (or the payments object can't sell one). */
   loadOffer(offerId: string): Promise<StoreOffer | null>;
   buyOffer(offer: StoreOffer): Promise<PurchaseResult>;
+  /**
+   * Moves a subscriber to another plan of the same tier. When the store starts it at the next renewal (Apple does for a
+   * longer plan of the same level), the switch is remembered as `pendingSwitch` until the store shows the new plan.
+   */
+  switchPlan(plan: StorePlan): Promise<PurchaseResult>;
+  /** A switch booked on this phone that the store hasn't applied yet; null otherwise. */
+  pendingSwitch: PendingSwitch | null;
   /** True from a successful purchase on this phone until dismissWelcome(): the Premium page shows its welcome card. */
   justSubscribed: boolean;
   dismissWelcome(): void;
@@ -53,14 +76,40 @@ export interface SubscriptionProviderProps {
   userId: string | null;
   /** The app's own grown-ups check (kids' apps). Resolve true to go on. */
   grownUpCheck?: () => Promise<boolean>;
+  /** Keeps a booked plan switch between launches (AsyncStorage). Without it the switch shows until the app closes. */
+  storage?: SubscriptionStorage;
   children: ReactNode;
 }
 
-export function SubscriptionProvider({ config, payments, userId, grownUpCheck, children }: SubscriptionProviderProps) {
+export function SubscriptionProvider({ config, payments, userId, grownUpCheck, storage, children }: SubscriptionProviderProps) {
   const [state, setState] = useState<WatchState>({ tier: 'free', source: 'free', server: null });
   const [loading, setLoading] = useState(true);
   const [testerTier, setTesterTierState] = useState<string | null>(null);
   const [justSubscribed, setJustSubscribed] = useState(false);
+  const [pendingSwitch, setPending] = useState<PendingSwitch | null>(null);
+  const pendingKey = `app-subscriptions-kit:pending-switch:${userId ?? 'signed-out'}`;
+  const keep = useCallback((p: PendingSwitch | null) => {
+    setPending(p);
+    void (p ? storage?.setItem(pendingKey, JSON.stringify(p)) : storage?.removeItem(pendingKey))?.catch(() => undefined);
+  }, [storage, pendingKey]);
+  useEffect(() => {
+    let live = true;
+    setPending(null);
+    void storage?.getItem(pendingKey)
+      .then((raw) => { if (live && raw) setPending(JSON.parse(raw) as PendingSwitch); })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, [storage, pendingKey]);
+  // The booked switch goes once the store shows the new plan or says the subscription stops renewing, or well after its
+  // date. Only the store's own answer counts: a first "free" before the store has answered must not wipe it. While the
+  // account isn't paid nothing shows it anyway.
+  useEffect(() => {
+    if (!pendingSwitch || loading) return;
+    const r = state.renewal;
+    const late = pendingSwitch.startsAt ? Date.now() > Date.parse(pendingSwitch.startsAt) + 3 * 86_400_000 : false;
+    const storeSays = state.source === 'store' && !!r && (r.willRenew === false || isPlan(r.productId, pendingSwitch.planId));
+    if (storeSays || late) keep(null);
+  }, [pendingSwitch, loading, state, keep]);
   const tierNow = useRef('free');
   tierNow.current = state.tier;
 
@@ -116,6 +165,13 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, c
       openManage: async () => { if (await grownUp()) await payments.openManage?.(); },
       loadOffer: async (id) => (payments.ready && payments.loadOffer && id ? payments.loadOffer(id).catch(() => null) : null),
       buyOffer: async (offer) => ((await grownUp()) && payments.buyOffer ? settle(await payments.buyOffer(offer)) : CANCELLED),
+      switchPlan: async (plan) => {
+        const before = state.renewal ?? null;
+        const r = (await grownUp()) ? bought(await payments.buy(plan)) : CANCELLED;
+        if (r.ok && before?.productId && !isPlan(before.productId, plan.id)) keep({ planId: plan.id, startsAt: before.until ?? null });
+        return r;
+      },
+      pendingSwitch,
       justSubscribed,
       dismissWelcome: () => setJustSubscribed(false),
       grownUp,
@@ -125,7 +181,7 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, c
         set: async (t) => { await payments.setTesterTier?.(t); setTesterTierState(t && t !== 'free' ? t : null); },
       },
     };
-  }, [config, state, loading, payments, grownUp, settle, bought, justSubscribed, testerTier]);
+  }, [config, state, loading, payments, grownUp, settle, bought, justSubscribed, testerTier, pendingSwitch, keep]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
