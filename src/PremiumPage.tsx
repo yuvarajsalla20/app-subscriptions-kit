@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Modal, Platform, Pressable, Switch, View } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Modal, Platform, Pressable, Switch, View } from 'react-native';
 import { Crowns, Lock, useLook, type LookProps } from './look';
 import type { StoreOffer, StorePlan } from './payments';
-import { months, money, savings } from './pricing';
+import { isPlan, months, money, savings } from './pricing';
 import { SubscriptionStatusCard } from './StatusCard';
 import { useSubscription } from './SubscriptionProvider';
 import { SubscriptionRow } from './SubscriptionRow';
@@ -28,7 +28,7 @@ export interface PremiumPageProps extends LookProps {
   onOpenPlans: () => void;
   /** Called when Cancel, Renew, a code, Restore or an offer fails, with the error. */
   onError?: (error: unknown) => void;
-  /** The mark on the top cards. Default: a gem in the premium color. */
+  /** The mark on the top cards and the features row. Default: a king and a queen crown (`<Crowns>`). */
   icon?: ReactNode;
   /** What stops working when the paid tier ends, one short line each. Shown after a cancel and in Before You Go. */
   loseList?: readonly string[];
@@ -79,7 +79,23 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   const [sheet, setSheet] = useState(false);
   const [restoring, setRestoring] = useState<RestoreState>('idle');
   const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (noteTimer.current) clearTimeout(noteTimer.current); }, []);
+  // Guards that read now, not at the last render: two quick taps never start two store calls.
+  const restoreBusy = useRef(false);
+  const storeBusy = useRef(false);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      if (noteTimer.current) clearTimeout(noteTimer.current);
+    };
+  }, []);
+  /** Runs one store action at a time (the manage sheet, a purchase); a tap while one runs is ignored. */
+  const oneAtATime = (job: () => Promise<unknown>) => {
+    if (storeBusy.current) return;
+    storeBusy.current = true;
+    void job().catch(fail).finally(() => { storeBusy.current = false; });
+  };
   useEffect(() => {
     let live = true;
     sub.loadPlans().then((p) => { if (live) setPlans(p); }).catch(() => undefined);
@@ -102,8 +118,9 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   const monthly = ofTier.find((p) => months(p) === 1);
   const longest = [...ofTier].sort((a, b) => (months(b) ?? 0) - (months(a) ?? 0))[0];
   const product = sub.renewal?.productId?.toLowerCase() ?? '';
-  const mine = product ? ofTier.find((p) => product.endsWith(p.id.toLowerCase())) : undefined;
-  const other = ofTier.find((p) => p !== mine && (!mine || (months(p) ?? 0) > (months(mine) ?? 0))) ?? ofTier.find((p) => p !== mine);
+  const mine = product ? ofTier.find((p) => isPlan(product, p.id)) : undefined;
+  // Change Plan names a longer plan to move up to; on the longest plan it names none (the Plans screen only offers longer ones).
+  const other = mine ? ofTier.find((p) => (months(p) ?? 0) > (months(mine) ?? 0)) : ofTier.find((p) => p !== mine);
   const labelOf = (p: StorePlan) => config.plans.find((x) => x.id === p.id)?.label ?? p.id;
   const isOpen = open ?? (paid ? featuresOpen?.paid ?? false : featuresOpen?.free ?? true);
 
@@ -137,7 +154,8 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   const store = ios ? 'App Store' : 'Google Play';
   const account = ios ? 'Apple ID' : 'Google Account';
   const restore = async () => {
-    if (restoring === 'checking') return;
+    if (restoreBusy.current) return;
+    restoreBusy.current = true;
     if (noteTimer.current) clearTimeout(noteTimer.current);
     const wasPaid = paid;
     setRestoring('checking');
@@ -151,8 +169,13 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
       next = 'failed';
       fail(e);
     }
+    restoreBusy.current = false;
+    if (!alive.current) return;
     setRestoring(next);
-    if (next === 'allSet' || next === 'done' || next === 'none') noteTimer.current = setTimeout(() => setRestoring('idle'), RESTORE_NOTE_MS);
+    const said = next === 'allSet' ? s.restoreAllSet(tierLabel, account) : next === 'done' ? s.restoreDone(tierLabel)
+      : next === 'none' ? s.restoreNone(account) : next === 'failed' ? s.restoreFailed(store) : '';
+    if (said) AccessibilityInfo.announceForAccessibility?.(said);
+    if (next === 'allSet' || next === 'done' || next === 'none') noteTimer.current = setTimeout(() => { if (alive.current) setRestoring('idle'); }, RESTORE_NOTE_MS);
   };
   const badge = (bg: string, fg: string, glyph: string) => (
     <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
@@ -193,18 +216,20 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
     </View>
   ) : null;
 
-  const manage = () => void sub.openManage().catch(fail);
+  const manage = () => oneAtATime(() => sub.openManage());
   const savePct = other ? savings(other, plans) : 0;
-  const offerPct = offer ? Math.round(100 - (100 * offer.price) / offer.plan.price) : 0;
+  // The stay offer belongs to one plan: offered only to people on that plan, never as a move to another one.
+  const stay = offer && mine && offer.plan.id === mine.id ? offer : null;
+  const offerPct = stay && stay.plan.price > 0 ? Math.round(100 - (100 * stay.price) / stay.plan.price) : 0;
   const switchTo = longest && mine && longest !== mine && savings(longest, plans) > 0 ? longest : null;
-  const hasSheet = beforeCancel && (!!lose || !!offer || !!switchTo);
+  const hasSheet = beforeCancel && (!!lose || !!stay || !!switchTo);
 
   // ---- Top card ----
   let top: ReactNode;
   if (paid && sub.justSubscribed) {
     top = (
-      <View accessible accessibilityLabel={`${s.welcomeTitle(tierLabel)}. ${s.welcomeBody}`}
-        style={{ alignItems: 'center', padding: 22, borderRadius: c.radius + 8, backgroundColor: c.premiumSoft, borderWidth: 2, borderColor: c.premium }}>
+      // Not one accessible block, so VoiceOver can still reach Start Exploring inside it.
+      <View style={{ alignItems: 'center', padding: 22, borderRadius: c.radius + 8, backgroundColor: c.premiumSoft, borderWidth: 2, borderColor: c.premium }}>
         <Text style={{ position: 'absolute', left: 28, top: 16, color: c.premium, fontSize: 14 }}>✦</Text>
         <Text style={{ position: 'absolute', right: 30, top: 24, color: c.premium, fontSize: 18 }}>✦</Text>
         <Text style={{ position: 'absolute', left: 54, top: 92, color: c.premium, fontSize: 10 }}>✦</Text>
@@ -325,11 +350,11 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
           <Text accessibilityRole="header" style={{ color: c.text, fontSize: 22, fontWeight: '800', textAlign: 'center' }}>{s.beforeYouGo}</Text>
           {until ? <Text style={{ color: c.muted, fontSize: 14, textAlign: 'center' }}>{s.keepEitherWay(tierLabel, until)}</Text> : null}
           {lose}
-          {offer || switchTo ? heading(s.insteadYouCould) : null}
-          {offer ? (
+          {stay || switchTo ? heading(s.insteadYouCould) : null}
+          {stay ? (
             <View style={card}>
-              {row(s.stayOffer(offerPct), s.offerLine(per({ priceString: offer.priceString, period: offer.period }), offer.cycles * offer.period.count, offer.period.unit),
-                () => void sub.buyOffer(offer).then((r) => { if (r.ok) close(); else if (!r.cancelled) fail(new Error(r.message)); }).catch(fail),
+              {row(s.stayOffer(offerPct), s.offerLine(per({ priceString: stay.priceString, period: stay.period }), stay.cycles * stay.period.count, stay.period.unit),
+                () => oneAtATime(async () => { const r = await sub.buyOffer(stay); if (r.ok) close(); else if (!r.cancelled) fail(new Error(r.message)); }),
                 tag(s.offerTag, c.premium), true)}
             </View>
           ) : null}

@@ -93,6 +93,15 @@ describe('PlansScreen', () => {
     expect(payments.buy).not.toHaveBeenCalled();
   });
 
+  it('says why when a switch fails', async () => {
+    const payments = fakePayments();
+    const onSwitch = vi.fn(async () => ({ ok: false as const, cancelled: false, message: 'No connection' }));
+    const m = await mount(app(<PlansScreen {...legal} currentPlanId="monthly" onSwitch={onSwitch} />, payments));
+    await payments.emit({ tier: 'premium' });
+    await press(m.label('Switch to Yearly'));
+    expect(m.shown('No connection')).toBe(true);
+  });
+
   it('offers only the plans the app allows, and no switch at all when none is allowed', async () => {
     const longer = (from: StorePlan, to: StorePlan) => (months(to) ?? 0) > (months(from) ?? 0);
     const payments = fakePayments();

@@ -66,6 +66,8 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, c
 
   useEffect(() => {
     setLoading(true);
+    // Another person signed in: the welcome was for someone else.
+    setJustSubscribed(false);
     const stop = payments.watch(userId, (s) => {
       setState(s);
       setLoading(false);

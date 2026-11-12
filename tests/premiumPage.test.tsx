@@ -106,6 +106,30 @@ describe('PremiumPage', () => {
     expect(payments.openManage).toHaveBeenCalledOnce();
   });
 
+  it('a yearly subscriber never sees the monthly stay offer or a move down', async () => {
+    const loadOffer = vi.fn(async () => offer); // the offer is on the monthly plan
+    const payments = fakePayments({ loadOffer, buyOffer: vi.fn() });
+    const m = await mount(page(payments, vi.fn(), vi.fn(), { loseList: ['7 extra sounds'], stayOfferId: 'stay' }));
+    await act(async () => payments.emit({ ...renewing, renewal: { ...renewing.renewal, productId: 'x_yearly' } }));
+    expect(m.texts().some((t) => t.startsWith('Monthly ·'))).toBe(false);
+    await press(m.button(DEFAULT_STRINGS.cancelSubscription));
+    expect(m.shown(DEFAULT_STRINGS.beforeYouGo)).toBe(true);
+    expect(m.shown('Stay for 50% Off')).toBe(false);
+  });
+
+  it('a second tap on Cancel while the store sheet is open does nothing', async () => {
+    let close: () => void = () => undefined;
+    const payments = fakePayments({ openManage: vi.fn(() => new Promise<void>((r) => { close = r; })) });
+    const m = await mount(page(payments, vi.fn(), vi.fn(), { beforeCancel: false }));
+    await act(async () => payments.emit(renewing));
+    const cancel = m.button(DEFAULT_STRINGS.cancelSubscription)!;
+    await act(async () => { cancel.props.onPress(); cancel.props.onPress(); });
+    expect(payments.openManage).toHaveBeenCalledOnce();
+    await act(async () => close());
+    await press(m.button(DEFAULT_STRINGS.cancelSubscription));
+    expect(payments.openManage).toHaveBeenCalledTimes(2);
+  });
+
   it('after a cancel: Ends, Renew Subscription first and what is lost', async () => {
     const payments = fakePayments();
     const m = await mount(page(payments, vi.fn(), vi.fn(), { loseList: ['Data Export'] }));

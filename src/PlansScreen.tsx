@@ -31,7 +31,7 @@ export interface PlansScreenProps extends LookProps {
    * the change applies and sends the person to where it is made (the store's or the checkout's own page).
    * Left out: other plans can't be picked while subscribed.
    */
-  onSwitch?: (plan: StorePlan) => void | Promise<void>;
+  onSwitch?: (plan: StorePlan) => void | PurchaseResult | Promise<void | PurchaseResult>;
   /**
    * Which other plans a subscriber may switch to (default: all of the same tier). For example, only longer plans, so a
    * yearly member is never invited to move down to a shorter one. With no plan allowed, no switch is offered at all.
@@ -114,7 +114,15 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   const buy = async () => {
     if (switching) {
       setBusy('buy'); setNote(null);
-      try { await onSwitch!(chosen!.sp); } finally { setBusy(''); }
+      try {
+        // A switch that fails says why here, like a purchase does; a success is the app's to show.
+        const r = await onSwitch!(chosen!.sp);
+        if (r && !r.ok && !r.cancelled) setNote({ text: r.message, good: false, at: 'footer' });
+      } catch {
+        setNote({ text: s.pricesFailed, good: false, at: 'footer' });
+      } finally {
+        setBusy('');
+      }
       return;
     }
     if (!live || !chosen) return notYet('footer');

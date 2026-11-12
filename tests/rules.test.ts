@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowed, atLeast, canUse, defineSubscription, limitFor, money, perMonth, savings, tierAllowing } from '../src';
+import { allowed, atLeast, canUse, defineSubscription, isPlan, limitFor, money, perMonth, savings, tierAllowing } from '../src';
 import { plan } from './render';
 
 const one = defineSubscription({
@@ -60,5 +60,16 @@ describe('pricing', () => {
   });
   it('formats money in the store currency', () => {
     expect(money(3.339, 'USD')).toMatch(/3\.33/);
+  });
+});
+
+describe('isPlan', () => {
+  it('matches the plan id alone or after a separator, never inside a longer word', () => {
+    expect(isPlan('monthly', 'monthly')).toBe(true);
+    expect(isPlan('HringNring_Monthly', 'monthly')).toBe(true);
+    expect(isPlan('com.app.yearly', 'yearly')).toBe(true);
+    expect(isPlan('premium_monthly:base', 'monthly')).toBe(true);
+    expect(isPlan('bimonthly', 'monthly')).toBe(false);
+    expect(isPlan(null, 'monthly')).toBe(false);
   });
 });

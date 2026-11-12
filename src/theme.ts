@@ -271,7 +271,7 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   premiumFeatures: (t) => `${t} Features`,
   featureCount: (n) => (n === 1 ? '1 feature' : `${n} features`),
   tapToSee: 'Tap to see them',
-  whatYouLose: (d) => `What You Lose After ${d}`,
+  whatYouLose: (d) => (d ? `What You Lose After ${d}` : 'What You Lose'),
   beforeYouGo: 'Before You Go',
   keepEitherWay: (t, d) => `You keep ${t} until ${d} either way.`,
   insteadYouCould: 'Instead, You Could',

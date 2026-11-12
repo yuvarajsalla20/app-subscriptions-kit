@@ -1,3 +1,4 @@
+import { isPlan } from './pricing';
 import type { PlanConfig } from './define';
 import type { RenewalInfo, ServerInfo } from './payments';
 import type { SubscriptionStrings } from './theme';
@@ -40,7 +41,7 @@ export function statusLines(input: {
   const shown = until && !Number.isNaN(until.getTime()) && until.getTime() > now.getTime() ? until : null;
   const ending = server ? server.willRenew === false : renewal?.willRenew === false;
   const product = renewal?.productId?.toLowerCase() ?? '';
-  const plan = product ? plans.find((p) => product.endsWith(p.id.toLowerCase()))?.label ?? '' : '';
+  const plan = product ? plans.find((p) => isPlan(product, p.id))?.label ?? '' : '';
   return {
     title: s.youHave(tierLabel),
     plan: plan ? s.planName(plan) : '',

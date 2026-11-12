@@ -89,7 +89,17 @@ The Plans screen has the app's logo (`header`) and Close in one row, then the pl
 
 ## Versions
 
-Every release is tagged in git (`v1.11.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+Every release is tagged in git (`v1.12.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+
+### 1.12.0
+
+- The stay offer in Before You Go shows only to people on the plan it belongs to (a yearly subscriber is never offered a monthly discount that would move them down).
+- Change Plan names only a longer plan; on the longest plan it names none.
+- Cancel, Renew, Continue to Cancel and the stay offer run one at a time: a second quick tap does nothing. Restore's guard now holds for two taps in the same moment, and nothing updates after the page closes.
+- Restore results are read out by VoiceOver and TalkBack. The welcome card no longer hides Start Exploring from VoiceOver.
+- Plans: `onSwitch` may return the purchase result; a failed switch now says why.
+- `isPlan(productId, planId)` (exported) matches "monthly", "app_monthly", "com.app.monthly" and "sub:base", not "bimonthly". Used for the current plan and the status card.
+- Smaller: "What You Lose" without a date, the welcome card resets when someone else signs in.
 
 ### 1.11.0
 
