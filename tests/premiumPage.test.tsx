@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Pressable, Text } from 'react-native';
-import { DEFAULT_STRINGS, PremiumPage, SubscriptionProvider, defineSubscription, statusLines, useSubscription } from '../src';
+import { DEFAULT_STRINGS, PlanBadge, PremiumPage, SubscriptionProvider, UPDATED_MS, defineSubscription, statusLines, useSubscription } from '../src';
 import { act, fakePayments, mount, plan, press } from './render';
 
 const config = defineSubscription({
@@ -106,6 +106,51 @@ describe('PremiumPage', () => {
     expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(true);
     await act(async () => payments.emit(ended));
     expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(false);
+  });
+
+  it('the box says what changed: confetti and the renew date after Renew, a calm line after Cancel', async () => {
+    vi.useFakeTimers();
+    try {
+      const payments = fakePayments();
+      const m = await mount(page(payments, vi.fn(), vi.fn(), { beforeCancel: false }));
+      await act(async () => payments.emit(ended));
+      await press(m.button(DEFAULT_STRINGS.renewSubscription));
+      expect(m.shown(DEFAULT_STRINGS.updatingBody('Apple'))).toBe(true);
+      await act(async () => payments.emit(renewing));
+      expect(m.shown(DEFAULT_STRINGS.allSet)).toBe(true);
+      expect(m.shown('Premium Monthly renews on Jan 15, 2099')).toBe(true);
+      expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(false);
+      await act(async () => { await vi.advanceTimersByTimeAsync(UPDATED_MS + 100); });
+      expect(m.shown(DEFAULT_STRINGS.allSet)).toBe(false);
+      await press(m.button(DEFAULT_STRINGS.cancelSubscription));
+      await act(async () => payments.emit(ended));
+      expect(m.shown(DEFAULT_STRINGS.subscriptionUpdated)).toBe(true);
+      expect(m.shown('You keep Premium Monthly until Jan 15, 2099')).toBe(true);
+      expect(m.shown(DEFAULT_STRINGS.allSet)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('the app can swap the swinging art', async () => {
+    const payments = fakePayments();
+    const m = await mount(page(payments, vi.fn(), vi.fn(), { beforeCancel: false, updatingArt: <Text>Bells</Text> }));
+    await act(async () => payments.emit(renewing));
+    await press(m.button(DEFAULT_STRINGS.cancelSubscription));
+    expect(m.shown('Bells')).toBe(true);
+  });
+
+  it('PlanBadge names the plan once paid, Free otherwise', async () => {
+    const payments = fakePayments();
+    const m = await mount(
+      <SubscriptionProvider config={config} payments={payments} userId="u1">
+        <PlanBadge />
+      </SubscriptionProvider>,
+    );
+    expect(m.shown('Free')).toBe(true);
+    await act(async () => payments.emit(renewing));
+    expect(m.shown('Monthly')).toBe(true);
+    expect(m.label('Monthly')).toBeTruthy();
   });
 
   it('the updating line goes by itself when nothing changed', async () => {

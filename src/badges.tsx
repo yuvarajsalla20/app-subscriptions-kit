@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
-import { Lock, useLook, type LookProps } from './look';
-import { useSubscription } from './SubscriptionProvider';
+import { Crowns, Lock, useLook, type LookProps } from './look';
+import { isPlan } from './pricing';
+import { DEFAULT_STRINGS, type SubscriptionStrings } from './theme';
+import { useSubscription, type SubscriptionState } from './SubscriptionProvider';
 
 /** The "Premium" pill: a lock and the tier name, in the premium color. */
 export function PremiumPill({ tier, label, ...look }: LookProps & { tier?: string; label?: string }) {
@@ -44,6 +46,33 @@ export function PremiumGate({ feature, name, onUnlock, children, ...look }: Look
       <Pressable accessibilityRole="button" accessibilityLabel={button} onPress={onUnlock} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 18, borderRadius: c.radius, backgroundColor: c.premium }}>
         <Text style={{ color: c.onPremium, fontWeight: '800', fontSize: 15 }}>{button}</Text>
       </Pressable>
+    </View>
+  );
+}
+
+/** The account's level in one word: the plan's label once paid ("Monthly", "Yearly"), the tier's name when the plan is unknown, else "Free". */
+export function planLabel(sub: Pick<SubscriptionState, 'paid' | 'tier' | 'tierLabel' | 'renewal' | 'config'>, strings: Pick<SubscriptionStrings, 'free'> = DEFAULT_STRINGS): string {
+  if (!sub.paid) return strings.free;
+  const product = sub.renewal?.productId?.toLowerCase() ?? '';
+  const plan = product ? sub.config.plans.find((p) => p.tier === sub.tier && isPlan(product, p.id)) : undefined;
+  return plan?.label ?? sub.tierLabel;
+}
+
+/** `planLabel` for the signed-in account, kept in step. */
+export function usePlanLabel(strings?: Pick<SubscriptionStrings, 'free'>) {
+  return planLabel(useSubscription(), strings);
+}
+
+/** A small pill with the account's level, for a Settings row: the crowns and "Yearly" in gold once paid, a plain gray "Free" otherwise. */
+export function PlanBadge({ icon, ...look }: LookProps & { icon?: ReactNode }) {
+  const { c, s, Text } = useLook(look);
+  const sub = useSubscription();
+  const label = planLabel(sub, s);
+  const paid = sub.paid;
+  return (
+    <View accessibilityRole="text" accessibilityLabel={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: paid ? c.premiumSoft : c.bg, borderColor: paid ? c.premium : c.border, borderWidth: 1, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 }}>
+      {paid ? icon ?? <Crowns size={11} king={c.king} kingFill={c.kingFill} queen={c.queen} queenFill={c.queenFill} /> : null}
+      <Text style={{ color: paid ? c.premiumText ?? c.premium : c.muted, fontSize: 12, fontWeight: '800' }}>{label}</Text>
     </View>
   );
 }

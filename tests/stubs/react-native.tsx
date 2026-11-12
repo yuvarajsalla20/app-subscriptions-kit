@@ -12,4 +12,24 @@ export const Switch = host('Switch');
 export const Platform = { OS: 'ios' as string };
 export const Modal = host('Modal');
 export const ActivityIndicator = host('ActivityIndicator');
-export const AccessibilityInfo = { announceForAccessibility: (_: string) => undefined };
+export const AccessibilityInfo = { announceForAccessibility: (_: string) => undefined, isReduceMotionEnabled: async () => false, addEventListener: () => ({ remove: () => undefined }) };
+
+// Animations run nowhere in tests: values hold numbers, and every animation starts and stops without moving anything.
+class Value {
+  constructor(public v: number) {}
+  setValue(v: number) { this.v = v; }
+  interpolate() { return this; }
+}
+const anim = () => ({ start: (cb?: (r: { finished: boolean }) => void) => cb?.({ finished: true }), stop: () => undefined });
+export const Animated = {
+  View: host('Animated.View'),
+  Value,
+  timing: anim,
+  spring: anim,
+  loop: anim,
+  sequence: anim,
+  parallel: anim,
+  stagger: anim,
+  delay: anim,
+};
+export const Easing = { linear: (t: number) => t, quad: (t: number) => t, out: (f: unknown) => f, inOut: (f: unknown) => f };
