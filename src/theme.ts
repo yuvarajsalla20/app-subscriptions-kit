@@ -103,6 +103,18 @@ export interface SubscriptionStrings {
   developerOnly: string;
   free: string;
   graceNote: string;
+  /** The plan line on the status card: "Monthly plan". */
+  planName: (planLabel: string) => string;
+  /** Under the Ends date on the status card. */
+  endsNote: string;
+  /** Premium page: beside an unlocked feature with no switch. */
+  included: string;
+  /** Premium page: under a locked feature with no line of its own. */
+  lockedHint: string;
+  /** Premium page: read out for a locked feature. */
+  lockedLabel: string;
+  /** Premium page: Manage, after a cancel. */
+  autoRenewOn: string;
 }
 
 const UNIT = { DAY: 'day', WEEK: 'week', MONTH: 'month', YEAR: 'year' } as const;
@@ -156,4 +168,10 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   developerOnly: 'Developer only',
   free: 'Free',
   graceNote: 'There is a problem with your payment. Update it in your store account to keep your plan.',
+  planName: (p) => `${p} plan`,
+  endsNote: 'Auto-renew is off. You keep it until then.',
+  included: 'Included',
+  lockedHint: 'Upgrade to unlock',
+  lockedLabel: 'locked. Opens the plans',
+  autoRenewOn: 'Turn auto-renew back on',
 };
