@@ -4,6 +4,6 @@ const stub = (name: string) => new URL(`./tests/stubs/${name}`, import.meta.url)
 
 export default defineConfig({
   esbuild: { jsx: 'automatic' },
-  resolve: { alias: { 'react-native': stub('react-native.tsx') } },
+  resolve: { alias: { 'react-native-svg': stub('react-native-svg.tsx'), 'react-native': stub('react-native.tsx') } },
   test: { include: ['tests/**/*.test.{ts,tsx}'] },
 });

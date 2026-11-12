@@ -28,6 +28,11 @@ export interface SubscriptionTheme {
   /** The Cancel Subscription button and Continue to Cancel. */
   danger?: string;
   onDanger?: string;
+  /** The default Premium mark, a king and a queen crown: outline and fill of each. */
+  king?: string;
+  kingFill?: string;
+  queen?: string;
+  queenFill?: string;
 }
 
 export const DEFAULT_THEME: SubscriptionTheme = {
@@ -46,6 +51,10 @@ export const DEFAULT_THEME: SubscriptionTheme = {
   radius: 14,
   danger: '#B42318',
   onDanger: '#FFFFFF',
+  king: '#B45309',
+  kingFill: '#FCD34D',
+  queen: '#BE185D',
+  queenFill: '#FBCFE8',
 };
 
 /** The app's own Text component, so the screens use its fonts. Plain React Native Text is the default. */

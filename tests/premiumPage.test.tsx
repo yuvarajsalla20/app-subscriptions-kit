@@ -117,6 +117,15 @@ describe('PremiumPage', () => {
     expect(payments.openManage).toHaveBeenCalled();
   });
 
+  it('the default mark is the king and queen crowns; an icon replaces them', async () => {
+    const svgs = (m: Awaited<ReturnType<typeof mount>>) => m.root.root.findAll((n) => n.type === 'Svg').length;
+    const m = await mount(page());
+    expect(svgs(m)).toBeGreaterThan(0);
+    const own = await mount(page(fakePayments(), vi.fn(), vi.fn(), { icon: <Text>★</Text> }));
+    expect(svgs(own)).toBe(0);
+    expect(own.shown('★')).toBe(true);
+  });
+
   it('Restore answers every time: checking, then all set for a subscriber', async () => {
     let finish: (r: { ok: true; tier: string }) => void = () => undefined;
     const payments = fakePayments({ restore: vi.fn(() => new Promise((r) => { finish = r; })) });
