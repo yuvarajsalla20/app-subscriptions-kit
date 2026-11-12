@@ -51,7 +51,7 @@ export function PremiumGate({ feature, name, onUnlock, children, ...look }: Look
 }
 
 /** The account's level in one word: the plan's label once paid ("Monthly", "Yearly"), the tier's name when the plan is unknown, else "Free". */
-export function planLabel(sub: Pick<SubscriptionState, 'paid' | 'tier' | 'tierLabel' | 'renewal' | 'config'>, strings: Partial<Pick<SubscriptionStrings, 'free'>> = {}): string {
+export function planLabel(sub: Pick<SubscriptionState, 'paid' | 'tier' | 'tierLabel' | 'renewal' | 'config'>, strings: Partial<SubscriptionStrings> = {}): string {
   if (!sub.paid) return strings.free ?? DEFAULT_STRINGS.free;
   const product = sub.renewal?.productId?.toLowerCase() ?? '';
   const plan = product ? sub.config.plans.find((p) => p.tier === sub.tier && isPlan(product, p.id)) : undefined;
@@ -59,7 +59,7 @@ export function planLabel(sub: Pick<SubscriptionState, 'paid' | 'tier' | 'tierLa
 }
 
 /** `planLabel` for the signed-in account, kept in step. */
-export function usePlanLabel(strings?: Partial<Pick<SubscriptionStrings, 'free'>>) {
+export function usePlanLabel(strings?: Partial<SubscriptionStrings>) {
   return planLabel(useSubscription(), strings);
 }
 
