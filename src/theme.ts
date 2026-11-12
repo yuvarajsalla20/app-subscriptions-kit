@@ -163,6 +163,16 @@ export interface SubscriptionStrings {
   restoreNone: (account: string) => string;
   /** After a restore that failed; tapping again retries. */
   restoreFailed: (store: string) => string;
+  /** Under the plan on the status card after a switch that starts at renewal. `date` is empty when unknown. */
+  switchingTo: (planLabel: string, date: string) => string;
+  /** Change Plan's line and the Plans button while a switch waits for renewal. */
+  planStarts: (planLabel: string, date: string) => string;
+  /** The tag on the plan that comes next. */
+  nextPlan: string;
+  /** Under the current plan while a switch waits: "Until Dec 12". */
+  untilDay: (date: string) => string;
+  /** On Plans while a switch waits for renewal. */
+  switchBooked: (nextLabel: string, currentLabel: string, date: string) => string;
   /** The green tag: "Save 37%". */
   saveTag: (pct: number) => string;
   /** The features header and its count. */
@@ -267,6 +277,12 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   restoreDone: (tier) => `${tier} Restored.`,
   restoreNone: (account) => `No Purchases Found on This ${account}.`,
   restoreFailed: (store) => `Couldn't Reach the ${store}. Tap to Try Again.`,
+  switchingTo: (plan, date) => (date ? `Switching to ${plan} on ${date}` : `Switching to ${plan} at Renewal`),
+  planStarts: (plan, date) => (date ? `${plan} Starts ${date}` : `${plan} Starts at Renewal`),
+  nextPlan: 'NEXT',
+  untilDay: (date) => `Until ${date}`,
+  switchBooked: (next, current, date) =>
+    `Your switch to ${next} is booked. ${current} stays${date ? ` until ${date}` : ' until it renews'}, then ${next} begins. Nothing is charged until then.`,
   saveTag: (n) => `Save ${n}%`,
   premiumFeatures: (t) => `${t} Features`,
   featureCount: (n) => (n === 1 ? '1 feature' : `${n} features`),

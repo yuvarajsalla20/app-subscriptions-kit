@@ -5,6 +5,7 @@ import { useLook, type LookProps } from './look';
 import type { PurchaseResult, StorePlan } from './payments';
 import { money, perMonth, savings } from './pricing';
 import { rank } from './rules';
+import { shortDay } from './status';
 import { useSubscription } from './SubscriptionProvider';
 
 export interface PlansScreenProps extends LookProps {
@@ -89,7 +90,10 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   const current = has && currentPlanId && sub.tier === tab ? shown.find((x) => x.cfg.id === currentPlanId) ?? null : null;
   // The plans a subscriber may move to: the same tier's others, narrowed by the app (for example, longer plans only).
   const targets = current ? shown.filter((x) => x.cfg.id !== current.cfg.id && (!canSwitchTo || canSwitchTo(current.sp, x.sp))) : [];
-  const canSwitch = !!current && !!onSwitch && !switchBlocked && targets.length > 0;
+  // A switch already booked for the next renewal: that plan shows NEXT and nothing can be switched again until it starts.
+  const pending = current && sub.pendingSwitch && sub.pendingSwitch.planId !== current.cfg.id ? shown.find((x) => x.cfg.id === sub.pendingSwitch!.planId) ?? null : null;
+  const pendingDay = pending ? shortDay(sub.pendingSwitch!.startsAt) : '';
+  const canSwitch = !pending && !!current && !!onSwitch && !switchBlocked && targets.length > 0;
   // While switching is offered, the current plan can't be picked and the best allowed plan is picked to start with.
   const others = canSwitch ? targets : shown;
   const chosen = shown.find((x) => x.cfg.id === pick && !(canSwitch && x.cfg.id === current!.cfg.id))
@@ -98,7 +102,7 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   const live = sub.ready && store.length > 0;
   const tabLabel = config.tierLabels[tab]!;
   const trial = !sub.paid ? chosen?.sp.trialDays ?? null : null;
-  const label = switching ? s.switchPlan(chosen!.cfg.label) : has ? s.youHave(config.tierLabels[sub.tier]!) : trial ? s.startTrial(trial) : sub.paid ? s.switchTo(tabLabel) : s.upgrade(tabLabel);
+  const label = pending ? `✓ ${s.planStarts(pending.cfg.label, pendingDay)}` : switching ? s.switchPlan(chosen!.cfg.label) : has ? s.youHave(config.tierLabels[sub.tier]!) : trial ? s.startTrial(trial) : sub.paid ? s.switchTo(tabLabel) : s.upgrade(tabLabel);
   // While subscribed, the price under the button is the current plan's, or the one being switched to; never a row just looked at.
   const priced = !has ? chosen : switching ? chosen : current;
   const locked = has && !switching;
@@ -199,14 +203,15 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
             const pickable = !has || (canSwitch ? targets.some((x) => x.cfg.id === cfg.id) : isCurrent);
             const pm = perMonth(sp);
             const saved = savings(sp, source);
-            const tag = isCurrent ? s.currentPlan : cfg.badge;
+            const isNext = cfg.id === pending?.cfg.id;
+            const tag = isCurrent ? s.currentPlan : isNext ? s.nextPlan : cfg.badge;
             return (
-              <Pressable key={cfg.id} accessibilityRole="radio" accessibilityState={{ checked: on, disabled: !pickable }} accessibilityLabel={`${cfg.label}, ${sp.priceString}${isCurrent ? `, ${s.currentPlan}` : ''}`} onPress={() => setPick(cfg.id)} disabled={!pickable}
+              <Pressable key={cfg.id} accessibilityRole="radio" accessibilityState={{ checked: on, disabled: !pickable }} accessibilityLabel={`${cfg.label}, ${sp.priceString}${isCurrent ? `, ${s.currentPlan}` : ''}${isNext ? `, ${s.planStarts(cfg.label, pendingDay)}` : ''}`} onPress={() => setPick(cfg.id)} disabled={!pickable}
                 style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: tag ? 18 : 14, paddingBottom: 14, borderRadius: c.radius + 4, backgroundColor: isCurrent ? c.premiumSoft : c.surface, opacity: pickable || isCurrent ? 1 : 0.6 },
-                  isCurrent ? { borderWidth: 2, borderColor: c.premium } : on ? { borderWidth: 2, borderColor: c.accent } : lift]}>
+                  isCurrent ? { borderWidth: 2, borderColor: c.premium } : on || isNext ? { borderWidth: 2, borderColor: c.accent } : lift, isNext ? { opacity: 1 } : null]}>
                 {tag ? (
                   <Text style={{ position: 'absolute', top: -10, left: 14, fontSize: 11, fontWeight: '800', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10, overflow: 'hidden',
-                    color: c.onPremium, backgroundColor: c.premium }}>{tag}</Text>
+                    color: isNext ? c.onAccent : c.onPremium, backgroundColor: isNext ? c.accent : c.premium }}>{tag}</Text>
                 ) : null}
                 <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: on ? 6 : 2, borderColor: on ? c.accent : c.border }} />
                 <View style={{ flex: 1, gap: 2 }}>
@@ -219,6 +224,8 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
                       {pm !== null ? `${s.perMonth(money(pm, sp.currency))}${saved ? ` · ${s.save(saved)}` : ''}` : sp.period ? s.every(sp.period.unit, sp.period.count) : ''}
                     </Text>
                   ) : null}
+                  {isCurrent && pending && pendingDay ? <Text style={{ color: c.muted, fontSize: 13 }}>{s.untilDay(pendingDay)}</Text> : null}
+                  {isNext ? <Text style={{ color: c.accent, fontSize: 13, fontWeight: '700' }}>{s.planStarts(cfg.label, pendingDay)}</Text> : null}
                 </View>
                 {/* The price and its period on one line, easy to read: $29.99/year. */}
                 <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
@@ -230,6 +237,9 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
           })}
         </View>
 
+        {pending && current ? (
+          <Text style={{ color: c.muted, fontSize: 14, textAlign: 'center', lineHeight: 20, marginHorizontal: 6 }}>{s.switchBooked(pending.cfg.label, current.cfg.label, pendingDay)}</Text>
+        ) : null}
         {has && current && switchBlocked ? (
           <View style={{ backgroundColor: c.premiumSoft, borderRadius: c.radius, padding: 12 }}>
             <Text style={{ color: c.text, fontSize: 14 }}>{switchBlocked}</Text>

@@ -3,6 +3,7 @@ import { AccessibilityInfo, ActivityIndicator, Modal, Platform, Pressable, Switc
 import { Crowns, Lock, useLook, type LookProps } from './look';
 import type { StoreOffer, StorePlan } from './payments';
 import { isPlan, months, money, savings } from './pricing';
+import { shortDay } from './status';
 import { SubscriptionStatusCard } from './StatusCard';
 import { useSubscription } from './SubscriptionProvider';
 import { SubscriptionRow } from './SubscriptionRow';
@@ -40,17 +41,6 @@ export interface PremiumPageProps extends LookProps {
   beforeCancel?: boolean;
 }
 
-/** "Dec 12" in the phone's language. */
-const shortDay = (iso: string | null | undefined): string => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  try {
-    return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(d);
-  } catch {
-    return iso.slice(0, 10);
-  }
-};
 
 /** How long "You're All Set" or "No Purchases Found" stays before the hint comes back. */
 export const RESTORE_NOTE_MS = 4000;
@@ -122,6 +112,8 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   // Change Plan names a longer plan to move up to; on the longest plan it names none (the Plans screen only offers longer ones).
   const other = mine ? ofTier.find((p) => (months(p) ?? 0) > (months(mine) ?? 0)) : ofTier.find((p) => p !== mine);
   const labelOf = (p: StorePlan) => config.plans.find((x) => x.id === p.id)?.label ?? p.id;
+  // A switch booked for the next renewal: Change Plan says when it starts instead of offering it again.
+  const next = sub.pendingSwitch ? ofTier.find((p) => p.id === sub.pendingSwitch!.planId) : undefined;
   const isOpen = open ?? (paid ? featuresOpen?.paid ?? false : featuresOpen?.free ?? true);
 
   const card = { backgroundColor: c.surface, borderColor: c.border, borderWidth: 1, borderRadius: c.radius, overflow: 'hidden' as const };
@@ -221,7 +213,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   // The stay offer belongs to one plan: offered only to people on that plan, never as a move to another one.
   const stay = offer && mine && offer.plan.id === mine.id ? offer : null;
   const offerPct = stay && stay.plan.price > 0 ? Math.round(100 - (100 * stay.price) / stay.plan.price) : 0;
-  const switchTo = longest && mine && longest !== mine && savings(longest, plans) > 0 ? longest : null;
+  const switchTo = !next && longest && mine && longest !== mine && savings(longest, plans) > 0 ? longest : null;
   const hasSheet = beforeCancel && (!!lose || !!stay || !!switchTo);
 
   // ---- Top card ----
@@ -280,7 +272,9 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
           : bigButton(s.cancelSubscription, until ? s.keepUntil(tierLabel, until) : '', danger, onDanger, hasSheet ? () => setSheet(true) : manage)}
         {ending ? lose : null}
         <View style={card}>
-          {row(s.changePlan, other ? s.planLine(labelOf(other), per(other)) : null, onOpenPlans, savePct > 0 ? tag(s.saveTag(savePct), '#15803D') : null, true)}
+          {next
+            ? row(s.changePlan, s.planStarts(labelOf(next), shortDay(sub.pendingSwitch!.startsAt)), onOpenPlans, undefined, true, { detailColor: c.accent, bold: true })
+            : row(s.changePlan, other ? s.planLine(labelOf(other), per(other)) : null, onOpenPlans, savePct > 0 ? tag(s.saveTag(savePct), '#15803D') : null, true)}
           {restoreRow()}
         </View>
       </>

@@ -50,3 +50,15 @@ export function statusLines(input: {
     note: server?.status === 'grace' ? s.graceNote : ending ? s.endsNote : '',
   };
 }
+
+/** "Dec 12" in the phone's language. */
+export const shortDay = (iso: string | null | undefined): string => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  try {
+    return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(d);
+  } catch {
+    return iso.slice(0, 10);
+  }
+};

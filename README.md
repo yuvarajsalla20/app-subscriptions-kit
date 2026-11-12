@@ -89,7 +89,16 @@ The Plans screen has the app's logo (`header`) and Close in one row, then the pl
 
 ## Versions
 
-Every release is tagged in git (`v1.12.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+Every release is tagged in git (`v1.13.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+
+### 1.13.0
+
+- **A booked plan switch shows.** On the App Store a longer plan of the same level (Monthly to Yearly) starts at the next renewal. `sub.switchPlan(plan)` buys it and, when the store still shows the old plan, remembers it as `sub.pendingSwitch` (`{ planId, startsAt }`) until the store shows the new plan or stops renewing.
+  - Status card: "→ Switching to Yearly on Dec 12" under the plan.
+  - Premium page: Change Plan reads "Yearly Starts Dec 12"; Before You Go doesn't offer the switch again.
+  - Plans: the current plan says "Until Dec 12", the next one is tagged NEXT with "Yearly Starts Dec 12", one line explains it, and the button reads "✓ Yearly Starts Dec 12" (no second switch).
+- `SubscriptionProvider` takes `storage` (AsyncStorage fits) to keep it between launches.
+- New strings: `switchingTo`, `planStarts`, `nextPlan`, `untilDay`, `switchBooked`. `shortDay(iso)` is exported.
 
 ### 1.12.0
 
