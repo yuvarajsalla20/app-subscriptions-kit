@@ -89,7 +89,16 @@ The Plans screen has the app's logo (`header`) and Close in one row, then the pl
 
 ## Versions
 
-Every release is tagged in git (`v1.6.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+Every release is tagged in git (`v1.8.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+
+### 1.8.0
+
+A whole Premium page for Settings, and its status card. **Nothing changes for an app that does not use them.**
+
+- `<PremiumPage features onOpenPlans onError>`: the app lists its features (`{ key, label, detail?, icon?, toggle?, children? }`) and the kit draws them. Free: a lock on each, a tap opens the plans, then Upgrade, code and restore. Paid: the status card, each feature with its switch (when it has `toggle`) or "Included", then Manage, code and restore. After a cancel, Manage reads "Turn auto-renew back on". Development builds keep `SubscriptionRow` at the bottom for the tester switch.
+- `<SubscriptionStatusCard>`: "You have Premium", the plan (the plan whose `id` ends the store product id, so `hringnring_yearly` is "Yearly"), and "Renews …" or, after a cancel, "Ends …" with "Auto-renew is off. You keep it until then." A payment problem shows `graceNote`. Nothing for a free account.
+- `statusLines(...)`: the same words without drawing, for tests or an app's own layout.
+- New strings: `planName`, `endsNote`, `included`, `lockedHint`, `lockedLabel`, `autoRenewOn`.
 
 ### 1.7.0
 
