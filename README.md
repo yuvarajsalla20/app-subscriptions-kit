@@ -89,7 +89,13 @@ The Plans screen has the app's logo (`header`) and Close in one row, then the pl
 
 ## Versions
 
-Every release is tagged in git (`v1.9.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+Every release is tagged in git (`v1.10.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+
+### 1.10.0
+
+- **Restore Subscription always answers.** The row dims while pressed, shows a spinner and "Checking With the App Store…" (a second tap is ignored), then says what happened for a few seconds (`RESTORE_NOTE_MS`, 4 s): "You're All Set. Premium Is Active on This Apple ID.", "Premium Restored.", or "No Purchases Found on This Apple ID.". A failure says "Couldn't Reach the App Store. Tap to Try Again." until tapped, and still calls `onError`. On Android the words say Google Play and Google Account.
+- Once paid, the hint under Restore is "Premium Missing on a Device? Tap to Check." instead of "Already paid on another device?".
+- New strings: `restoreHintPaid(tier)`, `restoreChecking(store)`, `restoreAllSet(tier, account)`, `restoreDone(tier)`, `restoreNone(account)`, `restoreFailed(store)`.
 
 ### 1.9.0
 

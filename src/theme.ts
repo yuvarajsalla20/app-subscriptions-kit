@@ -140,8 +140,20 @@ export interface SubscriptionStrings {
   /** Under Change Plan: "Yearly · $29.99/year". */
   planLine: (planLabel: string, priceWithPer: string) => string;
   restoreSubscription: string;
-  /** Under Restore Subscription. */
+  /** Under Restore Subscription on a free account. */
   restoreHint: string;
+  /** Under Restore Subscription once paid: "Premium Missing on a Device? Tap to Check." */
+  restoreHintPaid: (tierLabel: string) => string;
+  /** While the store is checked. `store` is "App Store" or "Google Play". */
+  restoreChecking: (store: string) => string;
+  /** After a restore that found what this account already has. `account` is "Apple ID" or "Google Account". */
+  restoreAllSet: (tierLabel: string, account: string) => string;
+  /** After a restore that brought the paid tier back. */
+  restoreDone: (tierLabel: string) => string;
+  /** After a restore that found nothing. */
+  restoreNone: (account: string) => string;
+  /** After a restore that failed; tapping again retries. */
+  restoreFailed: (store: string) => string;
   /** The green tag: "Save 37%". */
   saveTag: (pct: number) => string;
   /** The features header and its count. */
@@ -240,6 +252,12 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   planLine: (p, price) => `${p} · ${price}`,
   restoreSubscription: 'Restore Subscription',
   restoreHint: 'Already paid on another device?',
+  restoreHintPaid: (tier) => `${tier} Missing on a Device? Tap to Check.`,
+  restoreChecking: (store) => `Checking With the ${store}…`,
+  restoreAllSet: (tier, account) => `You're All Set. ${tier} Is Active on This ${account}.`,
+  restoreDone: (tier) => `${tier} Restored.`,
+  restoreNone: (account) => `No Purchases Found on This ${account}.`,
+  restoreFailed: (store) => `Couldn't Reach the ${store}. Tap to Try Again.`,
   saveTag: (n) => `Save ${n}%`,
   premiumFeatures: (t) => `${t} Features`,
   featureCount: (n) => (n === 1 ? '1 feature' : `${n} features`),

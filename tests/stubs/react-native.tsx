@@ -11,3 +11,4 @@ export const ScrollView = host('ScrollView');
 export const Switch = host('Switch');
 export const Platform = { OS: 'ios' as string };
 export const Modal = host('Modal');
+export const ActivityIndicator = host('ActivityIndicator');
