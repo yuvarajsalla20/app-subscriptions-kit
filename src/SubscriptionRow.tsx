@@ -19,8 +19,10 @@ const day = (iso: string) => {
 export function SubscriptionRow({ onOpenPlans, ...look }: LookProps & { onOpenPlans: () => void }) {
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
-  const { config, server } = sub;
-  const until = server?.activeUntil ?? null;
+  const { config, server, renewal } = sub;
+  // The server row when the app has one, else the store's own date (an app with no backend).
+  const until = server?.activeUntil ?? renewal?.until ?? null;
+  const ends = server ? server.willRenew === false : renewal?.willRenew === false;
   const row = (label: string, right: string, onPress?: () => void) => (
     <Pressable key={label} accessibilityRole={onPress ? 'button' : undefined} disabled={!onPress} onPress={onPress}
       style={{ flexDirection: 'row', alignItems: 'center', minHeight: 44, borderTopWidth: 1, borderTopColor: c.border }}>
@@ -38,7 +40,7 @@ export function SubscriptionRow({ onOpenPlans, ...look }: LookProps & { onOpenPl
         {sub.paid ? (
           <>
             {row(s.plan, sub.tierLabel)}
-            {until ? row(server?.willRenew === false ? s.ends : s.renews, day(until)) : null}
+            {until ? row(ends ? s.ends : s.renews, day(until)) : null}
             {row(s.manage, '›', () => void sub.openManage())}
           </>
         ) : (

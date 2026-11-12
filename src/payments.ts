@@ -21,10 +21,20 @@ export interface ServerInfo {
   willRenew: boolean | null;
 }
 
+/** The store's view of the paid tier: when it ends or renews (ISO, null for lifetime) and whether it renews. */
+export interface RenewalInfo {
+  until: string | null;
+  willRenew: boolean;
+  /** The store product that gives the tier, such as 'hringnring_monthly'. */
+  productId?: string | null;
+}
+
 export interface WatchState {
   tier: string;
   source: 'free' | 'store' | 'account' | 'tester';
   server: ServerInfo | null;
+  /** From the store while it gives the tier (app-payments-kit 2.2.0+). Lets an app with no server show Renews / Ends. */
+  renewal?: RenewalInfo | null;
 }
 
 export interface PaymentsLike {
