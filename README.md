@@ -91,6 +91,15 @@ The Plans screen has the app's logo (`header`) and Close in one row, then the pl
 
 Every release is tagged in git (`v1.13.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
 
+### 1.13.1
+
+Review fixes for the booked plan switch.
+- **It no longer gets stuck.** It also goes once the store has renewed past its start date on the old plan (the switch was undone in the store), and 40 days after booking when no start date was known.
+- It shows only while it can still happen: a paid account on that plan's tier that is still renewing. "Ends Dec 12" and "Switching to Yearly" never show together.
+- A sign-in change never shows or clears the last person's switch, and broken saved data is ignored instead of crashing.
+- Plans: with a switch booked, the plan in use stays the checked one, and the button's spoken name has no "✓".
+- `switchPlan` uses the same purchase path as `buy`.
+
 ### 1.13.0
 
 - **A booked plan switch shows.** On the App Store a longer plan of the same level (Monthly to Yearly) starts at the next renewal. `sub.switchPlan(plan)` buys it and, when the store still shows the old plan, remembers it as `sub.pendingSwitch` (`{ planId, startsAt }`) until the store shows the new plan or stops renewing.

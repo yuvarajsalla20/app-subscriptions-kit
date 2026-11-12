@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CompareTable, PlansScreen, PremiumGate, SubscriptionProvider, SubscriptionRow, defineSubscription, months, usePremium, useSubscription, type StorePlan, type SubscriptionConfig } from '../src';
-import { fakePayments, mount, plan, press } from './render';
+import { act, fakePayments, mount, plan, press } from './render';
 import { Platform, Text } from './stubs/react-native';
 
 const config = defineSubscription({
@@ -132,6 +132,58 @@ describe('PlansScreen', () => {
     await payments.emit({ tier: 'premium', renewal: { until: '2100-12-12T10:00:00Z', willRenew: true, productId: 'app_yearly' } });
     expect(again.shown('NEXT')).toBe(false);
     expect(saved.size).toBe(0);
+  });
+
+  it('a booked switch: keeps the plan in use marked, lets go when undone or ending, and ignores broken saved data', async () => {
+    const saved = new Map<string, string>();
+    const storage = { getItem: vi.fn(async (k: string) => saved.get(k) ?? null), setItem: vi.fn(async (k: string, v: string) => { saved.set(k, v); }), removeItem: vi.fn(async (k: string) => { saved.delete(k); }) };
+    const monthly = { tier: 'premium', renewal: { until: '2099-12-12T10:00:00Z', willRenew: true, productId: 'app_monthly' } };
+    const Switcher = () => {
+      const sub = useSubscription();
+      return <PlansScreen {...legal} currentPlanId="monthly" onSwitch={(p) => sub.switchPlan(p)} />;
+    };
+    const payments = fakePayments();
+    const wrap = (ui: React.ReactNode) => <SubscriptionProvider config={config} payments={payments} userId="u1" storage={storage}>{ui}</SubscriptionProvider>;
+    const m = await mount(wrap(<Switcher />));
+    await payments.emit(monthly);
+    await press(m.label('Switch to Yearly'));
+    // The plan in use stays the checked one; the button's spoken name has no tick.
+    const radio = (name: string) => m.root.root.findAll((n) => typeof n.type === 'string' && n.props.accessibilityRole === 'radio' && String(n.props.accessibilityLabel).startsWith(name))[0]!;
+    expect(radio('Monthly').props.accessibilityState.checked).toBe(true);
+    expect(radio('Yearly').props.accessibilityState.checked).toBe(false);
+    expect(m.root.root.findAll((n) => typeof n.props.accessibilityLabel === 'string' && n.props.accessibilityLabel.startsWith('✓')).length).toBe(0);
+
+    // Turned off auto-renew: the booked switch is hidden and dropped.
+    await payments.emit({ tier: 'premium', renewal: { ...monthly.renewal, willRenew: false } });
+    expect(m.shown('NEXT')).toBe(false);
+    expect(saved.size).toBe(0);
+
+    // Undone in the store: it renewed past the start date still on Monthly.
+    await payments.emit(monthly);
+    await press(m.label('Switch to Yearly'));
+    expect(m.shown('NEXT')).toBe(true);
+    await payments.emit({ tier: 'premium', renewal: { until: '2100-01-12T10:00:00Z', willRenew: true, productId: 'app_monthly' } });
+    expect(m.shown('NEXT')).toBe(false);
+    expect(saved.size).toBe(0);
+
+    // Broken saved data is ignored rather than crashing.
+    saved.set('app-subscriptions-kit:pending-switch:u1', '{}');
+    const again = await mount(wrap(<Switcher />));
+    await payments.emit(monthly);
+    expect(again.shown('NEXT')).toBe(false);
+    expect(again.shown('Switch to Yearly')).toBe(true);
+  });
+
+  it("never shows or clears another account's booked switch", async () => {
+    const saved = new Map<string, string>([['app-subscriptions-kit:pending-switch:u2', JSON.stringify({ planId: 'yearly', startsAt: '2099-12-12T10:00:00Z' })]]);
+    const storage = { getItem: vi.fn(async (k: string) => saved.get(k) ?? null), setItem: vi.fn(async (k: string, v: string) => { saved.set(k, v); }), removeItem: vi.fn(async (k: string) => { saved.delete(k); }) };
+    const payments = fakePayments();
+    const Switcher = () => <PlansScreen {...legal} currentPlanId="monthly" onSwitch={vi.fn()} />;
+    const wrap = (uid: string) => <SubscriptionProvider config={config} payments={payments} userId={uid} storage={storage}><Switcher /></SubscriptionProvider>;
+    const m = await mount(wrap('u1'));
+    await payments.emit({ tier: 'premium', renewal: { until: '2099-12-12T10:00:00Z', willRenew: false, productId: 'app_monthly' } });
+    await act(async () => { m.root.update(wrap('u2')); });
+    expect(saved.has('app-subscriptions-kit:pending-switch:u2')).toBe(true);
   });
 
   it('offers only the plans the app allows, and no switch at all when none is allowed', async () => {

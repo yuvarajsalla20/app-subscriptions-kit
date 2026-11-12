@@ -10,7 +10,25 @@ export interface PendingSwitch {
   planId: string;
   /** When it starts: the current plan's renewal date, if known. */
   startsAt: string | null;
+  /** When it was booked. Used to let it go if no start date was known. */
+  bookedAt?: string;
 }
+
+const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
+
+/** A saved switch, or null when what was saved isn't one (an older build, a broken write). */
+const readPending = (raw: string | null): PendingSwitch | null => {
+  try {
+    const v = raw ? (JSON.parse(raw) as Partial<PendingSwitch>) : null;
+    if (!v || typeof v.planId !== 'string' || !v.planId) return null;
+    const startsAt = typeof v.startsAt === 'string' && !Number.isNaN(Date.parse(v.startsAt)) ? v.startsAt : null;
+    const bookedAt = typeof v.bookedAt === 'string' && !Number.isNaN(Date.parse(v.bookedAt)) ? v.bookedAt : undefined;
+    return { planId: v.planId, startsAt, ...(bookedAt ? { bookedAt } : {}) };
+  } catch {
+    return null;
+  }
+};
 
 /** Where a booked switch is kept between launches. AsyncStorage fits as it is. */
 export interface SubscriptionStorage {
@@ -86,30 +104,41 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
   const [loading, setLoading] = useState(true);
   const [testerTier, setTesterTierState] = useState<string | null>(null);
   const [justSubscribed, setJustSubscribed] = useState(false);
-  const [pendingSwitch, setPending] = useState<PendingSwitch | null>(null);
   const pendingKey = `app-subscriptions-kit:pending-switch:${userId ?? 'signed-out'}`;
+  // Kept with the account it belongs to, so a sign-in change never shows (or clears) the last person's switch.
+  const [saved, setSaved] = useState<{ key: string; p: PendingSwitch | null }>({ key: pendingKey, p: null });
+  const booked = saved.key === pendingKey ? saved.p : null;
   const keep = useCallback((p: PendingSwitch | null) => {
-    setPending(p);
+    setSaved({ key: pendingKey, p });
     void (p ? storage?.setItem(pendingKey, JSON.stringify(p)) : storage?.removeItem(pendingKey))?.catch(() => undefined);
   }, [storage, pendingKey]);
   useEffect(() => {
     let live = true;
-    setPending(null);
+    setSaved({ key: pendingKey, p: null });
     void storage?.getItem(pendingKey)
-      .then((raw) => { if (live && raw) setPending(JSON.parse(raw) as PendingSwitch); })
+      .then((raw) => { if (live) setSaved({ key: pendingKey, p: readPending(raw) }); })
       .catch(() => undefined);
     return () => { live = false; };
   }, [storage, pendingKey]);
-  // The booked switch goes once the store shows the new plan or says the subscription stops renewing, or well after its
-  // date. Only the store's own answer counts: a first "free" before the store has answered must not wipe it. While the
-  // account isn't paid nothing shows it anyway.
+  // The booked switch goes once the store shows the new plan, says the subscription stops renewing, or has renewed past
+  // the start date on the old plan (the switch was undone in the store). Failing all that, a few days after its date (or
+  // 40 days after booking when no date was known). Only the store's own answer counts: a first "free" before the store
+  // has answered must not wipe it.
   useEffect(() => {
-    if (!pendingSwitch || loading) return;
+    if (!booked || loading) return;
     const r = state.renewal;
-    const late = pendingSwitch.startsAt ? Date.now() > Date.parse(pendingSwitch.startsAt) + 3 * 86_400_000 : false;
-    const storeSays = state.source === 'store' && !!r && (r.willRenew === false || isPlan(r.productId, pendingSwitch.planId));
+    const now = Date.now();
+    const starts = booked.startsAt ? Date.parse(booked.startsAt) : NaN;
+    const late = !Number.isNaN(starts) ? now > starts + 3 * DAY : booked.bookedAt ? now > Date.parse(booked.bookedAt) + 40 * DAY : false;
+    const renewedPast = !Number.isNaN(starts) && !!r?.until && Date.parse(r.until) > starts + HOUR;
+    const storeSays = state.source === 'store' && !!r && (r.willRenew === false || isPlan(r.productId, booked.planId) || renewedPast);
     if (storeSays || late) keep(null);
-  }, [pendingSwitch, loading, state, keep]);
+  }, [booked, loading, state, keep]);
+  // Shown only while it can still happen: a paid account of the plan's tier that is still renewing.
+  const tierOk = config.tiers.includes(state.tier) ? state.tier : 'free';
+  const bookedPlan = booked ? config.plans.find((p) => p.id === booked.planId) : undefined;
+  const stopping = state.server ? state.server.willRenew === false : state.renewal?.willRenew === false;
+  const pendingSwitch = booked && bookedPlan && bookedPlan.tier === tierOk && tierOk !== 'free' && !stopping ? booked : null;
   const tierNow = useRef('free');
   tierNow.current = state.tier;
 
@@ -139,6 +168,8 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
     return settle(r);
   }, [config, settle]);
 
+  const buy = useCallback(async (plan: StorePlan) => ((await grownUp()) ? bought(await payments.buy(plan)) : CANCELLED), [grownUp, bought, payments]);
+
   const value = useMemo<SubscriptionState>(() => {
     const tier = config.tiers.includes(state.tier) ? state.tier : 'free';
     return {
@@ -157,7 +188,7 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
       allowed: (n, v) => allowed(config, tier, n, v),
       tierFor: (f) => tierFor(config, f),
       loadPlans: () => payments.loadPlans(),
-      buy: async (plan) => ((await grownUp()) ? bought(await payments.buy(plan)) : CANCELLED),
+      buy,
       restore: async () => ((await grownUp()) ? settle(await payments.restore()) : CANCELLED),
       redeemCode: async (code) => { if (await grownUp()) await payments.redeemCode?.(code); },
       // Before purchases open, the box stays so the screen can say "not open yet"; once open, only where the provider takes codes.
@@ -167,8 +198,8 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
       buyOffer: async (offer) => ((await grownUp()) && payments.buyOffer ? settle(await payments.buyOffer(offer)) : CANCELLED),
       switchPlan: async (plan) => {
         const before = state.renewal ?? null;
-        const r = (await grownUp()) ? bought(await payments.buy(plan)) : CANCELLED;
-        if (r.ok && before?.productId && !isPlan(before.productId, plan.id)) keep({ planId: plan.id, startsAt: before.until ?? null });
+        const r = await buy(plan);
+        if (r.ok && before?.productId && !isPlan(before.productId, plan.id)) keep({ planId: plan.id, startsAt: before.until ?? null, bookedAt: new Date().toISOString() });
         return r;
       },
       pendingSwitch,
@@ -181,7 +212,7 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
         set: async (t) => { await payments.setTesterTier?.(t); setTesterTierState(t && t !== 'free' ? t : null); },
       },
     };
-  }, [config, state, loading, payments, grownUp, settle, bought, justSubscribed, testerTier, pendingSwitch, keep]);
+  }, [config, state, loading, payments, grownUp, settle, bought, justSubscribed, testerTier, pendingSwitch, keep, buy]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

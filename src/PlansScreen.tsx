@@ -96,13 +96,14 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   const canSwitch = !pending && !!current && !!onSwitch && !switchBlocked && targets.length > 0;
   // While switching is offered, the current plan can't be picked and the best allowed plan is picked to start with.
   const others = canSwitch ? targets : shown;
-  const chosen = shown.find((x) => x.cfg.id === pick && !(canSwitch && x.cfg.id === current!.cfg.id))
+  // With a switch booked, the plan in use stays the one marked; nothing else can be picked until the switch starts.
+  const chosen = (pending ? current : null) ?? shown.find((x) => x.cfg.id === pick && !(canSwitch && x.cfg.id === current!.cfg.id))
     ?? (canSwitch ? others.find((x) => x.cfg.badge) ?? others.find((x) => x.cfg.selected) ?? others[0] : current ?? shown.find((x) => x.cfg.selected) ?? shown[0]);
   const switching = canSwitch && !!chosen && chosen.cfg.id !== current!.cfg.id;
   const live = sub.ready && store.length > 0;
   const tabLabel = config.tierLabels[tab]!;
   const trial = !sub.paid ? chosen?.sp.trialDays ?? null : null;
-  const label = pending ? `✓ ${s.planStarts(pending.cfg.label, pendingDay)}` : switching ? s.switchPlan(chosen!.cfg.label) : has ? s.youHave(config.tierLabels[sub.tier]!) : trial ? s.startTrial(trial) : sub.paid ? s.switchTo(tabLabel) : s.upgrade(tabLabel);
+  const label = pending ? s.planStarts(pending.cfg.label, pendingDay) : switching ? s.switchPlan(chosen!.cfg.label) : has ? s.youHave(config.tierLabels[sub.tier]!) : trial ? s.startTrial(trial) : sub.paid ? s.switchTo(tabLabel) : s.upgrade(tabLabel);
   // While subscribed, the price under the button is the current plan's, or the one being switched to; never a row just looked at.
   const priced = !has ? chosen : switching ? chosen : current;
   const locked = has && !switching;
@@ -255,7 +256,7 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
           )}
           <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: locked, busy: busy === 'buy' }} onPress={() => void buy()} disabled={locked || busy !== ''}
             style={{ minHeight: 52, borderRadius: c.shadow ? 26 : c.radius, alignItems: 'center', justifyContent: 'center', backgroundColor: button, opacity: locked ? 0.5 : 1 }}>
-            <Text style={{ color: onButton, fontWeight: '800', fontSize: 16 }}>{busy === 'buy' ? '…' : label}</Text>
+            <Text style={{ color: onButton, fontWeight: '800', fontSize: 16 }}>{busy === 'buy' ? '…' : pending ? `✓ ${label}` : label}</Text>
           </Pressable>
           {priced && priced.sp.period && <Text style={{ fontSize: 12, color: c.muted, textAlign: 'center' }}>{s.thenPrice(priced.sp.priceString, s.every(priced.sp.period.unit, priced.sp.period.count), trial)}</Text>}
         </View>
