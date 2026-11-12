@@ -91,6 +91,11 @@ The Plans screen has the app's logo (`header`) and Close in one row, then the pl
 
 Every release is tagged in git (`v1.13.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
 
+### 1.15.0
+
+- **A happy updating box:** after the store's manage screen closes, a dark box over the page says "Updating Your Subscription…" with "Apple is confirming your change. This page will update by itself." The art swings like a ringing bell (`updatingArt`, default the crowns; wrap your own in `<Swing>`), a ring pulses and three dots bounce. Once the change shows, the mark pops in and the box says what changed for about 2 seconds (`UPDATED_MS`): confetti and "You're All Set! Premium Monthly renews on …" when the plan now renews, a calm "Subscription Updated" after a cancel. A tap closes it. Motion stops when the phone asks for less motion (`useReduceMotion`). New strings `updatingBody`, `allSet`, `subscriptionUpdated`, `renewsOn`; new theme `hud`, `onHud`, `hudAccent`, `confetti`.
+- **`PlanBadge`:** a small pill with the account's level for a Settings row: the crowns and "Monthly" or "Yearly" in gold once paid, a gray "Free" otherwise. `planLabel` / `usePlanLabel` give the same word as text. New theme `premiumText` (the pill's words).
+
 ### 1.14.0
 
 - **Every date has the year:** "Ends Thu, Nov 12, 2026, 10:07 PM", "Switching to Yearly on Nov 12, 2026", "Yearly Starts Nov 12, 2026", "What You Lose After Nov 12, 2026", the welcome card and the Plans screen (`shortDay` and the status card's date both include it).

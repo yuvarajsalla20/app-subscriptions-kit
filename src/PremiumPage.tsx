@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Modal, Platform, Pressable, Switch, View } from 'react-native';
 import { Crowns, Lock, useLook, type LookProps } from './look';
+import { UpdatingBox, type UpdatingDone } from './Updating';
 import type { StoreOffer, StorePlan } from './payments';
 import { isPlan, months, money, savings } from './pricing';
 import { shortDay } from './status';
@@ -39,6 +40,8 @@ export interface PremiumPageProps extends LookProps {
   stayOfferId?: string;
   /** Before You Go when Cancel Subscription is tapped (default true). It is skipped when it has nothing to show. */
   beforeCancel?: boolean;
+  /** What swings in the box while a change is confirmed (wrap your own art in `<Swing>`). Default: the crowns, swinging. */
+  updatingArt?: ReactNode;
 }
 
 
@@ -55,8 +58,10 @@ type RestoreState = 'idle' | 'checking' | 'allSet' | 'done' | 'none' | 'failed';
  */
 /** How long "Updating Your Subscription…" may show when nothing changes (the store's manage screen was closed as it was). */
 const UPDATING_MS = 20_000;
+/** How long the box says what changed before it closes by itself. */
+export const UPDATED_MS = 2_200;
 
-export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, featuresOpen, stayOfferId, beforeCancel = true, ...look }: PremiumPageProps) {
+export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, featuresOpen, stayOfferId, beforeCancel = true, updatingArt, ...look }: PremiumPageProps) {
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
   const { paid, config } = sub;
@@ -76,15 +81,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   const stateNow = useRef(stateKey);
   stateNow.current = stateKey;
   const [updatingFrom, setUpdatingFrom] = useState<string | null>(null);
-  useEffect(() => {
-    if (updatingFrom === null) return;
-    if (stateKey !== updatingFrom) {
-      setUpdatingFrom(null);
-      return;
-    }
-    const t = setTimeout(() => setUpdatingFrom(null), UPDATING_MS);
-    return () => clearTimeout(t);
-  }, [updatingFrom, stateKey]);
+  const [updated, setUpdated] = useState<UpdatingDone | null>(null);
   const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guards that read now, not at the last render: two quick taps never start two store calls.
   const restoreBusy = useRef(false);
@@ -133,6 +130,30 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   const next = sub.pendingSwitch ? ofTier.find((p) => p.id === sub.pendingSwitch!.planId) : undefined;
   // "Premium Monthly" when the plan is known, so a date line says which plan it is about.
   const planName = mine ? `${tierLabel} ${labelOf(mine)}` : tierLabel;
+  // The box waits for the change (or 20 seconds), then says what changed for a moment.
+  useEffect(() => {
+    if (updatingFrom === null) return;
+    if (stateKey !== updatingFrom) {
+      setUpdatingFrom(null);
+      const party = paid && !ending;
+      const nextLabel = next ? labelOf(next) : '';
+      const line = !until ? ''
+        : sub.pendingSwitch && nextLabel ? s.switchingTo(nextLabel, shortDay(sub.pendingSwitch.startsAt) || until)
+        : party ? s.renewsOn(planName, until)
+        : paid ? s.keepUntil(planName, until)
+        : '';
+      setUpdated({ title: party ? s.allSet : s.subscriptionUpdated, line, party });
+      return;
+    }
+    const t = setTimeout(() => setUpdatingFrom(null), UPDATING_MS);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [updatingFrom, stateKey]);
+  useEffect(() => {
+    if (!updated) return;
+    const t = setTimeout(() => setUpdated(null), UPDATED_MS);
+    return () => clearTimeout(t);
+  }, [updated]);
   const isOpen = open ?? (paid ? featuresOpen?.paid ?? false : featuresOpen?.free ?? true);
 
   const card = { backgroundColor: c.surface, borderColor: c.border, borderWidth: 1, borderRadius: c.radius, overflow: 'hidden' as const };
@@ -233,12 +254,17 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
     // The first check after the screen closed may already show the change; otherwise say it is on its way.
     if (alive.current && stateNow.current === before) setUpdatingFrom(before);
   });
-  const updating = updatingFrom !== null ? (
-    <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: -4 }}>
-      <ActivityIndicator color={c.accent} />
-      <Text style={{ color: c.accent, fontSize: 14, fontWeight: '700' }}>{s.updatingSubscription}</Text>
-    </View>
-  ) : null;
+  const updating = (
+    <UpdatingBox
+      waiting={updatingFrom !== null}
+      done={updated}
+      company={ios ? 'Apple' : 'Google'}
+      art={updatingArt}
+      mark={icon}
+      onClose={() => { setUpdatingFrom(null); setUpdated(null); }}
+      {...look}
+    />
+  );
   const savePct = other ? savings(other, plans) : 0;
   // The stay offer belongs to one plan: offered only to people on that plan, never as a move to another one.
   const stay = offer && mine && offer.plan.id === mine.id ? offer : null;

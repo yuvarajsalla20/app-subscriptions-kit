@@ -2,12 +2,13 @@ export { defineSubscription, type CompareRow, type LimitValue, type PlanConfig, 
 export { allowed, atLeast, canUse, limitFor, rank, tierAllowing, tierFor } from './rules';
 export { isPlan, money, months, perMonth, savings } from './pricing';
 export { SubscriptionProvider, usePremium, useSubscription, useTier, type PendingSwitch, type SubscriptionProviderProps, type SubscriptionState, type SubscriptionStorage } from './SubscriptionProvider';
-export { LockBadge, PremiumGate, PremiumPill } from './badges';
+export { LockBadge, PlanBadge, PremiumGate, PremiumPill, planLabel, usePlanLabel } from './badges';
+export { Swing, UpdatingBox, useReduceMotion, type UpdatingDone } from './Updating';
 export { CompareTable } from './CompareTable';
 export { PlansScreen, type PlansScreenProps } from './PlansScreen';
 export { SubscriptionRow } from './SubscriptionRow';
 export { SubscriptionStatusCard } from './StatusCard';
-export { PremiumPage, type PremiumFeature, type PremiumPageProps } from './PremiumPage';
+export { PremiumPage, UPDATED_MS, type PremiumFeature, type PremiumPageProps } from './PremiumPage';
 export { shortDay, statusLines, type StatusLines } from './status';
 export { DEFAULT_STRINGS, DEFAULT_THEME, type SubscriptionComponents, type SubscriptionStrings, type SubscriptionTheme } from './theme';
 export { Crowns, Diamond } from './look';

@@ -33,6 +33,15 @@ export interface SubscriptionTheme {
   kingFill?: string;
   queen?: string;
   queenFill?: string;
+  /** The words on the plan pill (Settings' Premium row). Default: the premium color. */
+  premiumText?: string;
+  /** The dark box shown while a subscription change is confirmed, and the words on it. */
+  hud?: string;
+  onHud?: string;
+  /** The ring and dots on that box. Default: the premium color. */
+  hudAccent?: string;
+  /** The confetti colors when a change is confirmed. */
+  confetti?: readonly string[];
 }
 
 export const DEFAULT_THEME: SubscriptionTheme = {
@@ -55,6 +64,10 @@ export const DEFAULT_THEME: SubscriptionTheme = {
   kingFill: '#FCD34D',
   queen: '#BE185D',
   queenFill: '#FBCFE8',
+  hud: '#14213D',
+  onHud: '#FFFFFF',
+  hudAccent: '#FFC23D',
+  confetti: ['#4FD1C0', '#FB923C', '#A78BFA', '#FBBF24', '#F472B6'],
 };
 
 /** The app's own Text component, so the screens use its fonts. Plain React Native Text is the default. */
@@ -158,6 +171,13 @@ export interface SubscriptionStrings {
   /** While the store is checked. `store` is "App Store" or "Google Play". */
   /** Under the top card from the moment the store's manage screen closes until the change shows (up to 20 seconds). */
   updatingSubscription: string;
+  /** Under it in the box. `company` is "Apple" or "Google". */
+  updatingBody: (company: string) => string;
+  /** The box once a change shows: the title when the plan now renews, and otherwise. */
+  allSet: string;
+  subscriptionUpdated: string;
+  /** Its line once the plan renews: "Premium Monthly renews on Dec 12, 2026". */
+  renewsOn: (planName: string, date: string) => string;
   restoreChecking: (store: string) => string;
   /** After a restore that found what this account already has. `account` is "Apple ID" or "Google Account". */
   restoreAllSet: (tierLabel: string, account: string) => string;
@@ -278,6 +298,10 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   restoreHint: 'Already paid on another device?',
   restoreHintPaid: (tier) => `${tier} Missing on a Device? Tap to Check.`,
   updatingSubscription: 'Updating Your Subscription…',
+  updatingBody: (company) => `${company} is confirming your change. This page will update by itself.`,
+  allSet: "You're All Set!",
+  subscriptionUpdated: 'Subscription Updated',
+  renewsOn: (t, d) => `${t} renews on ${d}`,
   restoreChecking: (store) => `Checking With the ${store}…`,
   restoreAllSet: (tier, account) => `You're All Set. ${tier} Is Active on This ${account}.`,
   restoreDone: (tier) => `${tier} Restored.`,
