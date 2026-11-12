@@ -75,6 +75,8 @@ export interface SubscriptionStrings {
   currentPlan: string;
   /** Badge over the account's own column in the Free vs paid table. */
   current: string;
+  /** The compare table's first column heading. */
+  feature: string;
   /** Not shown since 1.5.0 (the box is gone: Restore and Have a code? are one line). Kept so existing `strings` still type-check. */
   alreadySubscribed: string;
   /** Heading over the Free vs paid table. */
@@ -140,10 +142,10 @@ export interface SubscriptionStrings {
   /** "$3.99/month or $29.99/year" under See Plans. */
   priceChoice: (a: string, b: string) => string;
   cancelSubscription: string;
-  /** Under Cancel Subscription: "You keep Premium until Dec 12". */
+  /** Under Cancel Subscription: "You keep Premium Monthly until Dec 12, 2026". `tierLabel` includes the plan when known. */
   keepUntil: (tierLabel: string, date: string) => string;
   renewSubscription: string;
-  /** Under Renew Subscription: "Premium continues after Dec 12". */
+  /** Under Renew Subscription: "Turn auto-renew back on to keep Premium Monthly after Dec 12, 2026". `tierLabel` includes the plan when known. */
   continuesAfter: (tierLabel: string, date: string) => string;
   changePlan: string;
   /** Under Change Plan: "Yearly · $29.99/year". */
@@ -154,6 +156,8 @@ export interface SubscriptionStrings {
   /** Under Restore Subscription once paid: "Premium Missing on a Device? Tap to Check." */
   restoreHintPaid: (tierLabel: string) => string;
   /** While the store is checked. `store` is "App Store" or "Google Play". */
+  /** Under the top card from the moment the store's manage screen closes until the change shows (up to 20 seconds). */
+  updatingSubscription: string;
   restoreChecking: (store: string) => string;
   /** After a restore that found what this account already has. `account` is "Apple ID" or "Google Account". */
   restoreAllSet: (tierLabel: string, account: string) => string;
@@ -212,6 +216,7 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   switchPlan: (p) => `Switch to ${p}`,
   currentPlan: 'Current plan',
   current: 'Current',
+  feature: 'Feature',
   alreadySubscribed: 'Already subscribed?',
   compareTitle: 'Compare plans',
   youHave: (t) => `You have ${t}`,
@@ -266,12 +271,13 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   cancelSubscription: 'Cancel Subscription',
   keepUntil: (t, d) => `You keep ${t} until ${d}`,
   renewSubscription: 'Renew Subscription',
-  continuesAfter: (t, d) => `${t} continues after ${d}`,
+  continuesAfter: (t, d) => `Turn auto-renew back on to keep ${t} after ${d}`,
   changePlan: 'Change Plan',
   planLine: (p, price) => `${p} · ${price}`,
   restoreSubscription: 'Restore Subscription',
   restoreHint: 'Already paid on another device?',
   restoreHintPaid: (tier) => `${tier} Missing on a Device? Tap to Check.`,
+  updatingSubscription: 'Updating Your Subscription…',
   restoreChecking: (store) => `Checking With the ${store}…`,
   restoreAllSet: (tier, account) => `You're All Set. ${tier} Is Active on This ${account}.`,
   restoreDone: (tier) => `${tier} Restored.`,

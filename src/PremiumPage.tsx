@@ -53,6 +53,9 @@ type RestoreState = 'idle' | 'checking' | 'allSet' | 'done' | 'none' | 'failed';
  * card, the features (closed), then Cancel Subscription (with Before You Go first), Change Plan and Restore. After a
  * cancel: Ends, then Renew Subscription and what is lost, then the features. Right after a purchase: a welcome card.
  */
+/** How long "Updating Your Subscription…" may show when nothing changes (the store's manage screen was closed as it was). */
+const UPDATING_MS = 20_000;
+
 export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, featuresOpen, stayOfferId, beforeCancel = true, ...look }: PremiumPageProps) {
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
@@ -68,6 +71,20 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   const [open, setOpen] = useState<boolean | null>(null);
   const [sheet, setSheet] = useState(false);
   const [restoring, setRestoring] = useState<RestoreState>('idle');
+  // After the store's manage screen closes: "Updating Your Subscription…" until the account's state changes (or 20 seconds).
+  const stateKey = JSON.stringify([sub.tier, sub.renewal, sub.server?.willRenew ?? null, sub.server?.activeUntil ?? null]);
+  const stateNow = useRef(stateKey);
+  stateNow.current = stateKey;
+  const [updatingFrom, setUpdatingFrom] = useState<string | null>(null);
+  useEffect(() => {
+    if (updatingFrom === null) return;
+    if (stateKey !== updatingFrom) {
+      setUpdatingFrom(null);
+      return;
+    }
+    const t = setTimeout(() => setUpdatingFrom(null), UPDATING_MS);
+    return () => clearTimeout(t);
+  }, [updatingFrom, stateKey]);
   const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guards that read now, not at the last render: two quick taps never start two store calls.
   const restoreBusy = useRef(false);
@@ -114,6 +131,8 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   const labelOf = (p: StorePlan) => config.plans.find((x) => x.id === p.id)?.label ?? p.id;
   // A switch booked for the next renewal: Change Plan says when it starts instead of offering it again.
   const next = sub.pendingSwitch ? ofTier.find((p) => p.id === sub.pendingSwitch!.planId) : undefined;
+  // "Premium Monthly" when the plan is known, so a date line says which plan it is about.
+  const planName = mine ? `${tierLabel} ${labelOf(mine)}` : tierLabel;
   const isOpen = open ?? (paid ? featuresOpen?.paid ?? false : featuresOpen?.free ?? true);
 
   const card = { backgroundColor: c.surface, borderColor: c.border, borderWidth: 1, borderRadius: c.radius, overflow: 'hidden' as const };
@@ -208,7 +227,18 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
     </View>
   ) : null;
 
-  const manage = () => oneAtATime(() => sub.openManage());
+  const manage = () => oneAtATime(async () => {
+    const before = stateNow.current;
+    await sub.openManage();
+    // The first check after the screen closed may already show the change; otherwise say it is on its way.
+    if (alive.current && stateNow.current === before) setUpdatingFrom(before);
+  });
+  const updating = updatingFrom !== null ? (
+    <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: -4 }}>
+      <ActivityIndicator color={c.accent} />
+      <Text style={{ color: c.accent, fontSize: 14, fontWeight: '700' }}>{s.updatingSubscription}</Text>
+    </View>
+  ) : null;
   const savePct = other ? savings(other, plans) : 0;
   // The stay offer belongs to one plan: offered only to people on that plan, never as a move to another one.
   const stay = offer && mine && offer.plan.id === mine.id ? offer : null;
@@ -268,8 +298,8 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
       <>
         {heading(s.subscription)}
         {ending
-          ? bigButton(s.renewSubscription, until ? s.continuesAfter(tierLabel, until) : '', c.accent, c.onAccent, manage)
-          : bigButton(s.cancelSubscription, until ? s.keepUntil(tierLabel, until) : '', danger, onDanger, hasSheet ? () => setSheet(true) : manage)}
+          ? bigButton(s.renewSubscription, until ? s.continuesAfter(planName, until) : '', c.accent, c.onAccent, manage)
+          : bigButton(s.cancelSubscription, until ? s.keepUntil(planName, until) : '', danger, onDanger, hasSheet ? () => setSheet(true) : manage)}
         {ending ? lose : null}
         <View style={card}>
           {next
@@ -334,6 +364,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   return (
     <View style={{ gap: 14 }}>
       {top}
+      {updating}
       {subscriptionFirst ? actions : list}
       {subscriptionFirst ? list : actions}
       {sub.tester.available ? <SubscriptionRow onOpenPlans={onOpenPlans} {...look} /> : null}
@@ -342,7 +373,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
         <View style={{ backgroundColor: c.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 36, gap: 12 }}>
           <View style={{ alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: c.border, marginBottom: 4 }} />
           <Text accessibilityRole="header" style={{ color: c.text, fontSize: 22, fontWeight: '800', textAlign: 'center' }}>{s.beforeYouGo}</Text>
-          {until ? <Text style={{ color: c.muted, fontSize: 14, textAlign: 'center' }}>{s.keepEitherWay(tierLabel, until)}</Text> : null}
+          {until ? <Text style={{ color: c.muted, fontSize: 14, textAlign: 'center' }}>{s.keepEitherWay(planName, until)}</Text> : null}
           {lose}
           {stay || switchTo ? heading(s.insteadYouCould) : null}
           {stay ? (

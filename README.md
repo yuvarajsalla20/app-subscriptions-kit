@@ -91,6 +91,13 @@ The Plans screen has the app's logo (`header`) and Close in one row, then the pl
 
 Every release is tagged in git (`v1.13.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
 
+### 1.14.0
+
+- **Every date has the year:** "Ends Thu, Nov 12, 2026, 10:07 PM", "Switching to Yearly on Nov 12, 2026", "Yearly Starts Nov 12, 2026", "What You Lose After Nov 12, 2026", the welcome card and the Plans screen (`shortDay` and the status card's date both include it).
+- **The plan is named** under Cancel Subscription ("You keep Premium Monthly until …") and in Before You Go. Under Renew Subscription the line now reads "Turn auto-renew back on to keep Premium Monthly after …", so it no longer seems to contradict "Ends …".
+- **"Updating Your Subscription…"** shows under the top card from the moment the store's manage screen closes until the account's state changes, or for 20 seconds if nothing changed. New string `updatingSubscription`.
+- **Compare table:** paid columns are tinted with a crown in the header; what a paid tier adds shows as a solid tick or a bold number pill; rows that are the same in every tier are quieter. `CompareRow.icon` puts an icon before the label. New string `feature` (first column heading).
+
 ### 1.13.1
 
 Review fixes for the booked plan switch.

@@ -330,8 +330,25 @@ describe('gates and badges', () => {
 
   it('CompareTable has a column per tier', async () => {
     const m = await mount(app(<CompareTable />));
-    expect(m.shown('Free')).toBe(true);
+    expect(m.shown('FREE')).toBe(true);
+    expect(m.shown('PREMIUM')).toBe(true);
     expect(m.shown('Full practice tests')).toBe(true);
+  });
+
+  it('CompareTable: a paid gain is a solid tick or a number pill, and a row can carry an icon', async () => {
+    const c = defineSubscription({
+      plans: [{ id: 'monthly', tier: 'premium', label: 'Monthly' }],
+      compare: [
+        { label: 'Effects', values: { free: '–', premium: '✓' }, icon: <Text>icon-fx</Text> },
+        { label: 'Sounds', values: { free: '4', premium: '11' } },
+        { label: 'Sync', values: { free: '✓', premium: '✓' } },
+      ],
+    });
+    const m = await mount(app(<CompareTable />, fakePayments(), c));
+    expect(m.shown('icon-fx')).toBe(true);
+    expect(m.label('Included')).toBeTruthy(); // the solid tick for Effects
+    expect(m.shown('11')).toBe(true);
+    expect(m.root.root.findAll((n) => n.props.accessibilityLabel === 'Included' && typeof n.type === 'string').length).toBe(1); // Sync is the same everywhere: a plain tick
   });
 });
 
