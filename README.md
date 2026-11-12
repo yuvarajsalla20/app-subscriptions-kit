@@ -89,7 +89,14 @@ The Plans screen has the app's logo (`header`) and Close in one row, then the pl
 
 ## Versions
 
-Every release is tagged in git (`v1.5.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+Every release is tagged in git (`v1.6.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+
+### 1.6.0
+
+Prices are easier to read. **The wording changed for every app that upgrades; nothing to change in code.**
+
+- Each plan shows its price and period on one line, `$29.99/year`, instead of the price with "a year" under it. The new `strings.per(unit, count)` makes the `/year` part.
+- The per-month line under a longer plan reads `$2.50/month · save 50%` (was `$2.50 a month`).
 
 ### 1.5.0
 
