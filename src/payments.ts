@@ -37,6 +37,17 @@ export interface WatchState {
   renewal?: RenewalInfo | null;
 }
 
+/** A discount for people who already subscribe (app-payments-kit 2.3.0+), such as $1.99/month for 3 months. */
+export interface StoreOffer {
+  id: string;
+  plan: StorePlan;
+  priceString: string;
+  price: number;
+  period: { unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR'; count: number };
+  cycles: number;
+  native?: unknown;
+}
+
 export interface PaymentsLike {
   /** False where purchases can't happen (no key, Expo Go without a store). */
   ready: boolean;
@@ -47,6 +58,9 @@ export interface PaymentsLike {
   /** False where there is no code box (the website). Left out means codes are offered. */
   canRedeemCode?: boolean;
   openManage?(): Promise<void>;
+  /** A subscriber discount by its store id; null when the store has none. */
+  loadOffer?(offerId: string): Promise<StoreOffer | null>;
+  buyOffer?(offer: StoreOffer): Promise<PurchaseResult>;
   watch(userId: string | null, cb: (s: WatchState) => void): () => void;
   testerAvailable?: boolean;
   getTesterTier?(): Promise<string | null>;

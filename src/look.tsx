@@ -29,3 +29,13 @@ export function Lock({ color, size = 12 }: { color: string; size?: number }) {
     </View>
   );
 }
+
+/** A cut gem drawn with views: the default Premium mark. Pass any element instead through the page's `icon`. */
+export function Diamond({ color, fill, size = 24 }: { color: string; fill: string; size?: number }) {
+  const side = size * 0.62;
+  return (
+    <View accessibilityElementsHidden importantForAccessibility="no" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: side, height: side, backgroundColor: fill, borderWidth: Math.max(1.5, size / 12), borderColor: color, borderRadius: size / 10, transform: [{ rotate: '45deg' }] }} />
+    </View>
+  );
+}
