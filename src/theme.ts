@@ -69,6 +69,8 @@ export interface SubscriptionStrings {
   thenPrice: (price: string, every: string, trialDays: number | null) => string;
   every: (unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR', count: number) => string;
   perMonth: (price: string) => string;
+  /** Beside a plan's price, on the same line: "/year", "/month", "/3 months". */
+  per: (unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR', count: number) => string;
   save: (pct: number) => string;
   restore: string;
   restoring: string;
@@ -119,7 +121,8 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   youHave: (t) => `You have ${t}`,
   thenPrice: (p, every, trial) => `${trial ? `Free for ${trial} days, then ` : ''}${p} ${every}. Cancel any time.`,
   every: (u, n) => (n === 1 ? `a ${UNIT[u]}` : `every ${n} ${UNIT[u]}s`),
-  perMonth: (p) => `${p} a month`,
+  perMonth: (p) => `${p}/month`,
+  per: (u, n) => (n === 1 ? `/${UNIT[u]}` : `/${n} ${UNIT[u]}s`),
   save: (n) => `save ${n}%`,
   restore: 'Restore purchases',
   restoring: 'Checking…',

@@ -57,7 +57,8 @@ describe('PlansScreen', () => {
   it('shows store prices, the trial only when offered, and the required links', async () => {
     const m = await mount(app(<PlansScreen {...legal} />));
     expect(m.shown('$39.99')).toBe(true);
-    expect(m.shown('$3.33 a month · save 52%')).toBe(true);
+    expect(m.shown('$3.33/month · save 52%')).toBe(true);
+    expect(m.shown('/year')).toBe(true);
     expect(m.shown('Start 7-day free trial')).toBe(true);
     expect(m.shown('Restore purchases')).toBe(true);
     expect(m.shown('Terms of use')).toBe(true);

@@ -212,9 +212,10 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
                     </Text>
                   ) : null}
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
+                {/* The price and its period on one line, easy to read: $29.99/year. */}
+                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
                   <Text style={{ color: c.text, fontWeight: '800', fontSize: 17 }}>{sp.priceString}</Text>
-                  {sp.period ? <Text style={{ color: c.muted, fontSize: 11 }}>{s.every(sp.period.unit, sp.period.count)}</Text> : null}
+                  {sp.period ? <Text style={{ color: c.muted, fontSize: 13, fontWeight: '600' }}>{s.per(sp.period.unit, sp.period.count)}</Text> : null}
                 </View>
               </Pressable>
             );

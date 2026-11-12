@@ -1,6 +1,6 @@
 {
   "name": "app-subscriptions-kit",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Reusable subscription pattern for React Native / Expo apps: one config for tiers, features and limits, canUse/limit checks, a useSubscription hook, and themeable Plans screen, Free vs paid table, lock badges, gate and Settings row. Works with app-payments-kit or any payments object.",
   "main": "src/index.ts",
   "types": "src/index.ts",
