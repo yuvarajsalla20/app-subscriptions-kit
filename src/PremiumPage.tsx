@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { Modal, Pressable, Switch, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ActivityIndicator, Modal, Platform, Pressable, Switch, View } from 'react-native';
 import { Diamond, Lock, useLook, type LookProps } from './look';
 import type { StoreOffer, StorePlan } from './payments';
 import { months, money, savings } from './pricing';
@@ -52,6 +52,11 @@ const shortDay = (iso: string | null | undefined): string => {
   }
 };
 
+/** How long "You're All Set" or "No Purchases Found" stays before the hint comes back. */
+export const RESTORE_NOTE_MS = 4000;
+
+type RestoreState = 'idle' | 'checking' | 'allSet' | 'done' | 'none' | 'failed';
+
 /**
  * A whole Premium page for Settings, the same for every app: only the features, words, colors and icon are the app's.
  * Free: Get Premium, then See Plans, Restore and Have a Code?, then the features (open) with locks. Paid: the status
@@ -72,6 +77,9 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   const [offer, setOffer] = useState<StoreOffer | null>(null);
   const [open, setOpen] = useState<boolean | null>(null);
   const [sheet, setSheet] = useState(false);
+  const [restoring, setRestoring] = useState<RestoreState>('idle');
+  const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (noteTimer.current) clearTimeout(noteTimer.current); }, []);
   useEffect(() => {
     let live = true;
     sub.loadPlans().then((p) => { if (live) setPlans(p); }).catch(() => undefined);
@@ -107,16 +115,65 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
       <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>{text}</Text>
     </View>
   );
-  const row = (label: string, detail: string | null, onPress: () => void, right?: ReactNode, first = false) => (
-    <Pressable key={label} accessibilityRole="button" onPress={onPress} style={[{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 60, paddingVertical: 8, paddingHorizontal: 16 }, !first && line]}>
+  const row = (label: string, detail: string | null, onPress: () => void, right?: ReactNode, first = false,
+    opts: { detailColor?: string; bold?: boolean; end?: ReactNode; tint?: string; busy?: boolean } = {}) => (
+    <Pressable key={label} accessibilityRole="button" accessibilityState={opts.busy ? { busy: true } : undefined}
+      accessibilityLabel={detail ? `${label}. ${detail}` : label} onPress={opts.busy ? undefined : onPress}
+      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 60, paddingVertical: 8, paddingHorizontal: 16 },
+        !first && line, opts.tint ? { backgroundColor: opts.tint } : null, pressed && !opts.busy ? { opacity: 0.6 } : null]}>
       <View style={{ flex: 1 }}>
         <Text style={{ color: c.text, fontWeight: '600', fontSize: 16 }}>{label}</Text>
-        {detail ? <Text style={{ color: c.muted, fontSize: 13, marginTop: 2 }}>{detail}</Text> : null}
+        {detail ? <Text style={{ color: opts.detailColor ?? c.muted, fontSize: 13, fontWeight: opts.bold ? '700' : '400', marginTop: 2 }}>{detail}</Text> : null}
       </View>
       {right ?? null}
-      <Text style={{ color: c.muted, fontSize: 18 }}>›</Text>
+      {opts.end ?? <Text style={{ color: c.muted, fontSize: 18 }}>›</Text>}
     </Pressable>
   );
+
+  // ---- Restore Subscription: always tappable, and it always answers ----
+  const ios = Platform.OS !== 'android';
+  const store = ios ? 'App Store' : 'Google Play';
+  const account = ios ? 'Apple ID' : 'Google Account';
+  const restore = async () => {
+    if (restoring === 'checking') return;
+    if (noteTimer.current) clearTimeout(noteTimer.current);
+    const wasPaid = paid;
+    setRestoring('checking');
+    let next: RestoreState;
+    try {
+      const r = await sub.restore();
+      if (r.ok) next = config.tiers.indexOf(r.tier) > 0 ? (wasPaid ? 'allSet' : 'done') : 'none';
+      else if (r.cancelled) next = 'idle';
+      else { next = 'failed'; fail(new Error(r.message)); }
+    } catch (e) {
+      next = 'failed';
+      fail(e);
+    }
+    setRestoring(next);
+    if (next === 'allSet' || next === 'done' || next === 'none') noteTimer.current = setTimeout(() => setRestoring('idle'), RESTORE_NOTE_MS);
+  };
+  const badge = (bg: string, fg: string, glyph: string) => (
+    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ color: fg, fontSize: 13, fontWeight: '800' }}>{glyph}</Text>
+    </View>
+  );
+  const restoreRow = (first = false) => {
+    const label = s.restoreSubscription;
+    switch (restoring) {
+      case 'checking':
+        return row(label, s.restoreChecking(store), restore, undefined, first, { detailColor: c.accent, end: <ActivityIndicator color={c.accent} />, busy: true });
+      case 'allSet':
+        return row(label, s.restoreAllSet(tierLabel, account), restore, undefined, first, { detailColor: '#15803D', bold: true, end: badge('#15803D', '#FFFFFF', '✓'), tint: '#F0FDF4' });
+      case 'done':
+        return row(label, s.restoreDone(tierLabel), restore, undefined, first, { detailColor: '#15803D', bold: true, end: badge('#15803D', '#FFFFFF', '✓'), tint: '#F0FDF4' });
+      case 'none':
+        return row(label, s.restoreNone(account), restore, undefined, first, { detailColor: '#0369A1', bold: true, end: badge('#E0F2FE', '#0369A1', 'i'), tint: '#F0F9FF' });
+      case 'failed':
+        return row(label, s.restoreFailed(store), restore, undefined, first, { detailColor: danger, bold: true, end: badge('#FDE7E5', danger, '!'), tint: '#FEF3F2' });
+      default:
+        return row(label, paid ? s.restoreHintPaid(tierLabel) : s.restoreHint, restore, undefined, first);
+    }
+  };
   const bigButton = (label: string, detail: string, bg: string, fg: string, onPress: () => void) => (
     <Pressable accessibilityRole="button" accessibilityLabel={detail ? `${label}. ${detail}` : label} onPress={onPress}
       style={{ minHeight: 62, borderRadius: c.radius + 8, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 18 }}>
@@ -182,7 +239,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
         {heading(s.subscription)}
         {bigButton(s.unlock, choice, c.premium, c.onPremium, onOpenPlans)}
         <View style={card}>
-          {row(s.restoreSubscription, s.restoreHint, () => void sub.restore().catch(fail), undefined, true)}
+          {restoreRow(true)}
           {sub.canRedeemCode ? row(s.haveCode, null, () => void sub.redeemCode('').catch(fail)) : null}
         </View>
       </>
@@ -197,7 +254,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
         {ending ? lose : null}
         <View style={card}>
           {row(s.changePlan, other ? s.planLine(labelOf(other), per(other)) : null, onOpenPlans, savePct > 0 ? tag(s.saveTag(savePct), '#15803D') : null, true)}
-          {row(s.restoreSubscription, s.restoreHint, () => void sub.restore().catch(fail))}
+          {restoreRow()}
         </View>
       </>
     );

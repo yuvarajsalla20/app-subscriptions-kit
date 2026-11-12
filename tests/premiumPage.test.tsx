@@ -117,6 +117,39 @@ describe('PremiumPage', () => {
     expect(payments.openManage).toHaveBeenCalled();
   });
 
+  it('Restore answers every time: checking, then all set for a subscriber', async () => {
+    let finish: (r: { ok: true; tier: string }) => void = () => undefined;
+    const payments = fakePayments({ restore: vi.fn(() => new Promise((r) => { finish = r; })) });
+    const m = await mount(page(payments));
+    await act(async () => payments.emit(renewing));
+    expect(m.shown(DEFAULT_STRINGS.restoreHintPaid('Premium'))).toBe(true);
+    const tap = m.button(DEFAULT_STRINGS.restoreSubscription)!;
+    await act(async () => { void tap.props.onPress(); });
+    expect(m.shown(DEFAULT_STRINGS.restoreChecking('App Store'))).toBe(true);
+    // While checking the row takes no second tap.
+    expect(m.label(`${DEFAULT_STRINGS.restoreSubscription}. ${DEFAULT_STRINGS.restoreChecking('App Store')}`).props.onPress).toBeUndefined();
+    expect(payments.restore).toHaveBeenCalledOnce();
+    await act(async () => finish({ ok: true, tier: 'premium' }));
+    expect(m.shown(DEFAULT_STRINGS.restoreAllSet('Premium', 'Apple ID'))).toBe(true);
+  });
+
+  it('Restore on a free account: restored, nothing found, or failed', async () => {
+    const restore = vi.fn()
+      .mockResolvedValueOnce({ ok: true, tier: 'free' })
+      .mockResolvedValueOnce({ ok: false, cancelled: false, message: 'offline' })
+      .mockResolvedValueOnce({ ok: true, tier: 'premium' });
+    const onError = vi.fn();
+    const m = await mount(page(fakePayments({ restore }), vi.fn(), vi.fn(), { onError }));
+    expect(m.shown(DEFAULT_STRINGS.restoreHint)).toBe(true);
+    await press(m.button(DEFAULT_STRINGS.restoreSubscription));
+    expect(m.shown(DEFAULT_STRINGS.restoreNone('Apple ID'))).toBe(true);
+    await press(m.button(DEFAULT_STRINGS.restoreSubscription));
+    expect(m.shown(DEFAULT_STRINGS.restoreFailed('App Store'))).toBe(true);
+    expect(onError).toHaveBeenCalledOnce();
+    await press(m.button(DEFAULT_STRINGS.restoreSubscription));
+    expect(m.shown(DEFAULT_STRINGS.restoreDone('Premium'))).toBe(true);
+  });
+
   it('a first purchase shows the welcome card until Start Exploring', async () => {
     const payments = fakePayments();
     const Buy = () => {
