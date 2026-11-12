@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { LimitValue, SubscriptionConfig } from './define';
-import type { PaymentsLike, PurchaseResult, RenewalInfo, ServerInfo, StorePlan, WatchState } from './payments';
+import type { PaymentsLike, PurchaseResult, RenewalInfo, ServerInfo, StoreOffer, StorePlan, WatchState } from './payments';
 import { allowed, atLeast, canUse, limitFor, rank, tierFor } from './rules';
 
 export interface SubscriptionState {
@@ -32,6 +32,12 @@ export interface SubscriptionState {
   /** Whether to offer "Have a code?". False on the website, where store codes can't be used. */
   canRedeemCode: boolean;
   openManage(): Promise<void>;
+  /** A subscriber discount by its store id; null when there is none (or the payments object can't sell one). */
+  loadOffer(offerId: string): Promise<StoreOffer | null>;
+  buyOffer(offer: StoreOffer): Promise<PurchaseResult>;
+  /** True from a successful purchase on this phone until dismissWelcome(): the Premium page shows its welcome card. */
+  justSubscribed: boolean;
+  dismissWelcome(): void;
   /** Runs the grown-ups check in a kids' app; true right away otherwise. */
   grownUp(): Promise<boolean>;
   tester: { available: boolean; tier: string | null; set(tier: string | null): Promise<void> };
@@ -54,6 +60,9 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, c
   const [state, setState] = useState<WatchState>({ tier: 'free', source: 'free', server: null });
   const [loading, setLoading] = useState(true);
   const [testerTier, setTesterTierState] = useState<string | null>(null);
+  const [justSubscribed, setJustSubscribed] = useState(false);
+  const tierNow = useRef('free');
+  tierNow.current = state.tier;
 
   useEffect(() => {
     setLoading(true);
@@ -73,6 +82,11 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, c
     if (r.ok && rank(config, r.tier) > 0) setState((s) => (rank(config, r.tier) > rank(config, s.tier) ? { ...s, tier: r.tier, source: 'store' } : s));
     return r;
   }, [config]);
+  const bought = useCallback((r: PurchaseResult) => {
+    // Only a first purchase: a subscriber switching plans gets no welcome.
+    if (r.ok && rank(config, r.tier) > 0 && rank(config, tierNow.current) === 0) setJustSubscribed(true);
+    return settle(r);
+  }, [config, settle]);
 
   const value = useMemo<SubscriptionState>(() => {
     const tier = config.tiers.includes(state.tier) ? state.tier : 'free';
@@ -92,12 +106,16 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, c
       allowed: (n, v) => allowed(config, tier, n, v),
       tierFor: (f) => tierFor(config, f),
       loadPlans: () => payments.loadPlans(),
-      buy: async (plan) => ((await grownUp()) ? settle(await payments.buy(plan)) : CANCELLED),
+      buy: async (plan) => ((await grownUp()) ? bought(await payments.buy(plan)) : CANCELLED),
       restore: async () => ((await grownUp()) ? settle(await payments.restore()) : CANCELLED),
       redeemCode: async (code) => { if (await grownUp()) await payments.redeemCode?.(code); },
       // Before purchases open, the box stays so the screen can say "not open yet"; once open, only where the provider takes codes.
       canRedeemCode: !payments.ready || payments.canRedeemCode !== false,
       openManage: async () => { if (await grownUp()) await payments.openManage?.(); },
+      loadOffer: async (id) => (payments.ready && payments.loadOffer && id ? payments.loadOffer(id).catch(() => null) : null),
+      buyOffer: async (offer) => ((await grownUp()) && payments.buyOffer ? settle(await payments.buyOffer(offer)) : CANCELLED),
+      justSubscribed,
+      dismissWelcome: () => setJustSubscribed(false),
       grownUp,
       tester: {
         available: !!payments.testerAvailable,
@@ -105,7 +123,7 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, c
         set: async (t) => { await payments.setTesterTier?.(t); setTesterTierState(t && t !== 'free' ? t : null); },
       },
     };
-  }, [config, state, loading, payments, grownUp, settle, testerTier]);
+  }, [config, state, loading, payments, grownUp, settle, bought, justSubscribed, testerTier]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

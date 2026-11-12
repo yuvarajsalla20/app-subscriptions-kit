@@ -10,5 +10,6 @@ export { SubscriptionStatusCard } from './StatusCard';
 export { PremiumPage, type PremiumFeature, type PremiumPageProps } from './PremiumPage';
 export { statusLines, type StatusLines } from './status';
 export { DEFAULT_STRINGS, DEFAULT_THEME, type SubscriptionComponents, type SubscriptionStrings, type SubscriptionTheme } from './theme';
+export { Diamond } from './look';
 export type { LookProps } from './look';
-export type { PaymentsLike, PurchaseResult, RenewalInfo, ServerInfo, StorePlan, WatchState } from './payments';
+export type { PaymentsLike, PurchaseResult, RenewalInfo, ServerInfo, StoreOffer, StorePlan, WatchState } from './payments';

@@ -89,7 +89,20 @@ The Plans screen has the app's logo (`header`) and Close in one row, then the pl
 
 ## Versions
 
-Every release is tagged in git (`v1.8.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+Every release is tagged in git (`v1.9.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
+
+### 1.9.0
+
+The Premium page's subscription actions, the same for every app. Only the features, words, colors and icon are the app's.
+
+- Free: **Get Premium** card with store prices ("From $3.99/month", "Or $29.99/year"), then **See Plans**, Restore Subscription and Have a Code?, then the features (open, a lock on each).
+- Renewing: the status card, the features (closed, tap to open), then a **Cancel Subscription** button ("You keep Premium until Dec 12"), Change Plan (the other plan's price and a "Save n%" tag worked out from store prices) and Restore Subscription.
+- **Before You Go**: Cancel opens a sheet first with what is lost (`loseList`), a subscriber discount when the store has `stayOfferId` (needs app-payments-kit 2.3.0 `loadOffer`/`buyOffer`), Switch to the longer plan with its saving, Keep Premium, and Continue to Cancel (always one tap). Skipped when there is nothing to show, or with `beforeCancel={false}`.
+- After a cancel: Ends and "Auto-renew is off", then a **Renew Subscription** button and what is lost, then the features.
+- Right after a first purchase on this phone, a **Welcome to Premium** card until Start Exploring (`useSubscription().justSubscribed` / `dismissWelcome()`).
+- New props: `icon` (default `<Diamond>`), `loseList`, `featuresOpen` ({ free, paid }), `stayOfferId`, `beforeCancel`. `SubscriptionStatusCard` takes `icon` too.
+- New theme colors `danger`, `onDanger`. New strings for every new word; `endsNote` is now "Auto-renew is off". `autoRenewOn` is no longer shown.
+- `useSubscription()` adds `loadOffer(id)`, `buyOffer(offer)`. `PaymentsLike` can add `loadOffer?`, `buyOffer?`.
 
 ### 1.8.0
 

@@ -25,6 +25,9 @@ export interface SubscriptionTheme {
   onButton?: string;
   /** A CSS box-shadow for cards. Set it and cards drop their outline and float instead (a flat outline when empty). */
   shadow?: string;
+  /** The Cancel Subscription button and Continue to Cancel. */
+  danger?: string;
+  onDanger?: string;
 }
 
 export const DEFAULT_THEME: SubscriptionTheme = {
@@ -41,6 +44,8 @@ export const DEFAULT_THEME: SubscriptionTheme = {
   good: '#E9F7EF',
   warn: '#FFF1E6',
   radius: 14,
+  danger: '#B42318',
+  onDanger: '#FFFFFF',
 };
 
 /** The app's own Text component, so the screens use its fonts. Plain React Native Text is the default. */
@@ -113,8 +118,56 @@ export interface SubscriptionStrings {
   lockedHint: string;
   /** Premium page: read out for a locked feature. */
   lockedLabel: string;
-  /** Premium page: Manage, after a cancel. */
+  /** Premium page: Manage, after a cancel. Not shown since 1.9.0 (Renew Subscription took its place). */
   autoRenewOn: string;
+  /** Premium page (1.9.0): the top card for a free account. */
+  getPremium: (tierLabel: string) => string;
+  /** "From $3.99/month". */
+  fromPrice: (price: string) => string;
+  /** "Or $29.99/year. Cancel anytime." */
+  orPrice: (price: string) => string;
+  /** Under Get Premium when prices can't be shown. */
+  getPremiumNote: string;
+  /** "$3.99/month or $29.99/year" under See Plans. */
+  priceChoice: (a: string, b: string) => string;
+  cancelSubscription: string;
+  /** Under Cancel Subscription: "You keep Premium until Dec 12". */
+  keepUntil: (tierLabel: string, date: string) => string;
+  renewSubscription: string;
+  /** Under Renew Subscription: "Premium continues after Dec 12". */
+  continuesAfter: (tierLabel: string, date: string) => string;
+  changePlan: string;
+  /** Under Change Plan: "Yearly · $29.99/year". */
+  planLine: (planLabel: string, priceWithPer: string) => string;
+  restoreSubscription: string;
+  /** Under Restore Subscription. */
+  restoreHint: string;
+  /** The green tag: "Save 37%". */
+  saveTag: (pct: number) => string;
+  /** The features header and its count. */
+  premiumFeatures: (tierLabel: string) => string;
+  featureCount: (n: number) => string;
+  tapToSee: string;
+  /** The list of what stops working, after a cancel and in Before You Go. */
+  whatYouLose: (date: string) => string;
+  beforeYouGo: string;
+  keepEitherWay: (tierLabel: string, date: string) => string;
+  insteadYouCould: string;
+  /** "Stay for 50% Off". */
+  stayOffer: (pct: number) => string;
+  /** "$1.99/month for 3 months". */
+  offerLine: (priceWithPer: string, cycles: number, unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR') => string;
+  offerTag: string;
+  /** "Switch to Yearly". */
+  switchToPlan: (planLabel: string) => string;
+  /** "$29.99/year, about $2.49 a month". */
+  aboutPerMonth: (priceWithPer: string, monthly: string) => string;
+  keepPremium: (tierLabel: string) => string;
+  continueToCancel: string;
+  /** The card right after a purchase. */
+  welcomeTitle: (tierLabel: string) => string;
+  welcomeBody: string;
+  startExploring: string;
 }
 
 const UNIT = { DAY: 'day', WEEK: 'week', MONTH: 'month', YEAR: 'year' } as const;
@@ -169,9 +222,40 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   free: 'Free',
   graceNote: 'There is a problem with your payment. Update it in your store account to keep your plan.',
   planName: (p) => `${p} plan`,
-  endsNote: 'Auto-renew is off. You keep it until then.',
+  endsNote: 'Auto-renew is off',
   included: 'Included',
   lockedHint: 'Upgrade to unlock',
   lockedLabel: 'locked. Opens the plans',
   autoRenewOn: 'Turn auto-renew back on',
+  getPremium: (t) => `Get ${t}`,
+  fromPrice: (p) => `From ${p}`,
+  orPrice: (p) => `Or ${p}. Cancel anytime.`,
+  getPremiumNote: 'Unlock every feature.',
+  priceChoice: (a, b) => `${a} or ${b}`,
+  cancelSubscription: 'Cancel Subscription',
+  keepUntil: (t, d) => `You keep ${t} until ${d}`,
+  renewSubscription: 'Renew Subscription',
+  continuesAfter: (t, d) => `${t} continues after ${d}`,
+  changePlan: 'Change Plan',
+  planLine: (p, price) => `${p} · ${price}`,
+  restoreSubscription: 'Restore Subscription',
+  restoreHint: 'Already paid on another device?',
+  saveTag: (n) => `Save ${n}%`,
+  premiumFeatures: (t) => `${t} Features`,
+  featureCount: (n) => (n === 1 ? '1 feature' : `${n} features`),
+  tapToSee: 'Tap to see them',
+  whatYouLose: (d) => `What You Lose After ${d}`,
+  beforeYouGo: 'Before You Go',
+  keepEitherWay: (t, d) => `You keep ${t} until ${d} either way.`,
+  insteadYouCould: 'Instead, You Could',
+  stayOffer: (n) => `Stay for ${n}% Off`,
+  offerLine: (p, n, u) => `${p} for ${n} ${UNIT[u]}${n === 1 ? '' : 's'}`,
+  offerTag: 'Offer',
+  switchToPlan: (p) => `Switch to ${p}`,
+  aboutPerMonth: (p, m) => `${p}, about ${m} a month`,
+  keepPremium: (t) => `Keep ${t}`,
+  continueToCancel: 'Continue to Cancel',
+  welcomeTitle: (t) => `Welcome to ${t}`,
+  welcomeBody: 'Everything is unlocked.',
+  startExploring: 'Start Exploring',
 };
