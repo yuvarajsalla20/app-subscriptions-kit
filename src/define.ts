@@ -13,7 +13,10 @@ export interface PlanConfig {
 /** A row of the Free vs paid table: one value per tier. */
 export interface CompareRow {
   label: string;
+  /** One value per tier: '✓', '–', a number or a short word. */
   values: Record<string, string>;
+  /** A small icon before the label, such as the app's icon tile for that feature. */
+  icon?: import('react').ReactNode;
 }
 
 export type LimitValue = number | readonly number[];

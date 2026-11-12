@@ -13,10 +13,10 @@ export interface StatusLines {
   note: string;
 }
 
-/** "Thu, Nov 12, 11:35 PM" in the phone's language. */
+/** "Thu, Nov 12, 2026, 11:35 PM" in the phone's language. */
 const dateTime = (d: Date): string => {
   try {
-    return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(d);
+    return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(d);
   } catch {
     return d.toISOString().slice(0, 16).replace('T', ' ');
   }
@@ -51,13 +51,13 @@ export function statusLines(input: {
   };
 }
 
-/** "Dec 12" in the phone's language. */
+/** "Dec 12, 2026" in the phone's language: always with the year, so a date is never ambiguous. */
 export const shortDay = (iso: string | null | undefined): string => {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   try {
-    return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(d);
+    return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(d);
   } catch {
     return iso.slice(0, 10);
   }

@@ -88,6 +88,41 @@ describe('PremiumPage', () => {
     expect(payments.openManage).toHaveBeenCalled();
   });
 
+  it('dates carry the year and name the plan; Renew says what turning auto-renew on does', async () => {
+    const payments = fakePayments();
+    const m = await mount(page(payments));
+    await act(async () => payments.emit(renewing));
+    expect(m.shown('You keep Premium Monthly until Jan 15, 2099')).toBe(true);
+    await act(async () => payments.emit(ended));
+    expect(m.shown('Turn auto-renew back on to keep Premium Monthly after Jan 15, 2099')).toBe(true);
+    expect(m.texts().some((t) => t.startsWith('What You Lose After') && t.includes('2099'))).toBe(false); // no lose list passed
+  });
+
+  it('says it is updating after the manage screen closes, until the change shows', async () => {
+    const payments = fakePayments();
+    const m = await mount(page(payments, vi.fn(), vi.fn(), { beforeCancel: false }));
+    await act(async () => payments.emit(renewing));
+    await press(m.button(DEFAULT_STRINGS.cancelSubscription));
+    expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(true);
+    await act(async () => payments.emit(ended));
+    expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(false);
+  });
+
+  it('the updating line goes by itself when nothing changed', async () => {
+    vi.useFakeTimers();
+    try {
+      const payments = fakePayments();
+      const m = await mount(page(payments, vi.fn(), vi.fn(), { beforeCancel: false }));
+      await act(async () => payments.emit(renewing));
+      await press(m.button(DEFAULT_STRINGS.cancelSubscription));
+      expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(true);
+      await act(async () => { await vi.advanceTimersByTimeAsync(21_000); });
+      expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('Before You Go: what is lost, the stay offer, Keep Premium and Continue to Cancel', async () => {
     const payments = fakePayments({ loadOffer: vi.fn(async (id: string) => (id === 'stay' ? offer : null)), buyOffer: vi.fn(async () => ({ ok: true as const, tier: 'premium' })) });
     const m = await mount(page(payments, vi.fn(), vi.fn(), { loseList: ['7 extra sounds'], stayOfferId: 'stay' }));
