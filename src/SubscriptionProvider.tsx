@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { LimitValue, SubscriptionConfig } from './define';
-import type { PaymentsLike, PurchaseResult, ServerInfo, StorePlan, WatchState } from './payments';
+import type { PaymentsLike, PurchaseResult, RenewalInfo, ServerInfo, StorePlan, WatchState } from './payments';
 import { allowed, atLeast, canUse, limitFor, rank, tierFor } from './rules';
 
 export interface SubscriptionState {
@@ -12,6 +12,8 @@ export interface SubscriptionState {
   paid: boolean;
   source: WatchState['source'];
   server: ServerInfo | null;
+  /** The store's end or renewal date for the paid tier, when the tier comes from the store. */
+  renewal: RenewalInfo | null;
   /** True until the first answer arrives. */
   loading: boolean;
   /** False where purchases can't happen (no key, Expo Go without a store). */
@@ -81,6 +83,7 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, c
       paid: tier !== 'free',
       source: state.source,
       server: state.server,
+      renewal: state.renewal ?? null,
       loading,
       ready: payments.ready,
       isAtLeast: (t) => atLeast(config, tier, t),

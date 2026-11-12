@@ -91,6 +91,13 @@ The Plans screen has the app's logo (`header`) and Close in one row, then the pl
 
 Every release is tagged in git (`v1.6.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
 
+### 1.7.0
+
+Apps with no server row now see when Premium renews or ends. **Nothing to change in code; needs app-payments-kit 2.2.0 or later.**
+
+- `SubscriptionRow` shows **Renews <date>**, or **Ends <date>** after a cancel, from the store's `renewal` when there is no server row. A server row still wins when there is one.
+- `useSubscription().renewal` gives `{ until, willRenew, productId }` for screens of your own.
+
 ### 1.6.0
 
 Prices are easier to read. **The wording changed for every app that upgrades; nothing to change in code.**

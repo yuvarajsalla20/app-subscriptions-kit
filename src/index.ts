@@ -8,4 +8,4 @@ export { PlansScreen, type PlansScreenProps } from './PlansScreen';
 export { SubscriptionRow } from './SubscriptionRow';
 export { DEFAULT_STRINGS, DEFAULT_THEME, type SubscriptionComponents, type SubscriptionStrings, type SubscriptionTheme } from './theme';
 export type { LookProps } from './look';
-export type { PaymentsLike, PurchaseResult, ServerInfo, StorePlan, WatchState } from './payments';
+export type { PaymentsLike, PurchaseResult, RenewalInfo, ServerInfo, StorePlan, WatchState } from './payments';

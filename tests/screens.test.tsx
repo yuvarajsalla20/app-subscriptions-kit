@@ -260,6 +260,17 @@ describe('SubscriptionRow', () => {
     expect(m.texts().some((t) => t.startsWith('There is a problem with your payment'))).toBe(true);
   });
 
+  it("paid with no server: shows the store's renew date, then Ends after a cancel", async () => {
+    const payments = fakePayments();
+    const m = await mount(app(<SubscriptionRow onOpenPlans={() => undefined} />, payments));
+    payments.emit({ tier: 'premium', source: 'store', renewal: { until: '2027-01-15T12:00:00Z', willRenew: true } });
+    expect(m.shown('Renews')).toBe(true);
+    expect(m.shown('Ends')).toBe(false);
+    payments.emit({ tier: 'premium', source: 'store', renewal: { until: '2027-01-15T12:00:00Z', willRenew: false } });
+    expect(m.shown('Ends')).toBe(true);
+    expect(m.shown('Renews')).toBe(false);
+  });
+
   it('shows the tester switch only when the payments kit offers it', async () => {
     expect((await mount(app(<SubscriptionRow onOpenPlans={() => undefined} />))).label('Pretend to have Premium')).toBeUndefined();
     const setTesterTier = vi.fn(async () => {});
