@@ -192,6 +192,9 @@ describe('PremiumPage', () => {
     const m = await mount(page(payments, vi.fn(), vi.fn(), { loseList: ['7 extra sounds'], stayOfferId: 'stay' }));
     await act(async () => payments.emit({ ...renewing, renewal: { ...renewing.renewal, productId: 'x_yearly' } }));
     expect(m.texts().some((t) => t.startsWith('Monthly ·'))).toBe(false);
+    // Nothing longer to move up to: no Change Plan row, only Cancel and Restore.
+    expect(m.shown(DEFAULT_STRINGS.changePlan)).toBe(false);
+    expect(m.shown(DEFAULT_STRINGS.restoreSubscription)).toBe(true);
     await press(m.button(DEFAULT_STRINGS.cancelSubscription));
     expect(m.shown(DEFAULT_STRINGS.beforeYouGo)).toBe(true);
     expect(m.shown('Stay for 50% Off')).toBe(false);

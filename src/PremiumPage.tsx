@@ -53,7 +53,7 @@ type RestoreState = 'idle' | 'checking' | 'allSet' | 'done' | 'none' | 'failed';
 /**
  * A whole Premium page for Settings, the same for every app: only the features, words, colors and icon are the app's.
  * Free: Get Premium, then See Plans, Restore and Have a Code?, then the features (open) with locks. Paid: the status
- * card, the features (closed), then Cancel Subscription (with Before You Go first), Change Plan and Restore. After a
+ * card, the features (closed), then Cancel Subscription (with Before You Go first), Change Plan (not on the longest plan) and Restore. After a
  * cancel: Ends, then Renew Subscription and what is lost, then the features. Right after a purchase: a welcome card.
  */
 /** How long "Updating Your Subscription…" may show when nothing changes (the store's manage screen was closed as it was). */
@@ -328,9 +328,12 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
           : bigButton(s.cancelSubscription, until ? s.keepUntil(planName, until) : '', danger, onDanger, hasSheet ? () => setSheet(true) : manage)}
         {ending ? lose : null}
         <View style={card}>
+          {/* On the longest plan there is nothing to move up to, so Change Plan is left out instead of opening an empty choice. */}
           {next
             ? row(s.changePlan, s.planStarts(labelOf(next), shortDay(sub.pendingSwitch!.startsAt)), onOpenPlans, undefined, true, { detailColor: c.accent, bold: true })
-            : row(s.changePlan, other ? s.planLine(labelOf(other), per(other)) : null, onOpenPlans, savePct > 0 ? tag(s.saveTag(savePct), '#15803D') : null, true)}
+            : other
+              ? row(s.changePlan, s.planLine(labelOf(other), per(other)), onOpenPlans, savePct > 0 ? tag(s.saveTag(savePct), '#15803D') : null, true)
+              : null}
           {restoreRow()}
         </View>
       </>
