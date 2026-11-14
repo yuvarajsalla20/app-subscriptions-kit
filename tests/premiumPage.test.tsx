@@ -80,6 +80,26 @@ describe('PremiumPage', () => {
     expect(m.shown('Save 52%')).toBe(true);
   });
 
+  it('a feature with onPress opens its page once paid, and opens the plans while locked', async () => {
+    const onOpen = vi.fn();
+    const onOpenPlans = vi.fn();
+    const withLink = [{ key: 'export', label: 'Data Export', detail: 'CSV or PDF', onPress: onOpen }];
+    const payments = fakePayments();
+    const m = await mount(
+      <SubscriptionProvider config={config} payments={payments} userId="u1">
+        <PremiumPage onOpenPlans={onOpenPlans} features={withLink} />
+      </SubscriptionProvider>,
+    );
+    await press(m.label(`Data Export, ${DEFAULT_STRINGS.lockedLabel}`));
+    expect(onOpenPlans).toHaveBeenCalledTimes(1);
+    expect(onOpen).not.toHaveBeenCalled();
+    await act(async () => payments.emit(renewing));
+    await press(m.button('Premium Features'));
+    expect(m.shown('›')).toBe(true);
+    await press(m.label('Data Export'));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
   it('Cancel Subscription goes straight to the store when Before You Go has nothing to show', async () => {
     const payments = fakePayments();
     const m = await mount(page(payments, vi.fn(), vi.fn(), { beforeCancel: false }));

@@ -22,6 +22,11 @@ export interface PremiumFeature {
   toggle?: { value: boolean; onChange: (value: boolean) => void };
   /** Shown under the row once unlocked (and switched on, for a feature with a switch): an editor, more rows. */
   children?: ReactNode;
+  /**
+   * A feature that lives on another page (Data Export, in Account): once unlocked, a tap opens it and the row shows an arrow after "Included".
+   * Locked, a tap still opens the plans. Not used on a row with a switch.
+   */
+  onPress?: () => void;
 }
 
 export interface PremiumPageProps extends LookProps {
@@ -355,7 +360,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
       {isOpen
         ? features.map((f) => {
             const on = paid && (!f.toggle || f.toggle.value);
-            const press = !paid ? onOpenPlans : f.toggle ? () => f.toggle!.onChange(!f.toggle!.value) : undefined;
+            const press = !paid ? onOpenPlans : f.toggle ? () => f.toggle!.onChange(!f.toggle!.value) : f.onPress;
             return (
               <View key={f.key} style={line}>
                 <Pressable
@@ -363,6 +368,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
                   disabled={!press}
                   accessibilityRole={paid && f.toggle ? 'switch' : 'button'}
                   accessibilityLabel={paid ? f.label : `${f.label}, ${s.lockedLabel}`}
+                  accessibilityHint={paid && !f.toggle && f.onPress ? s.opensPage : undefined}
                   accessibilityState={paid && f.toggle ? { checked: f.toggle.value } : undefined}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16, minHeight: 56 }}
                 >
@@ -376,7 +382,10 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
                   ) : f.toggle ? (
                     <Switch value={f.toggle.value} onValueChange={f.toggle.onChange} trackColor={{ true: c.accent, false: c.border }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
                   ) : (
-                    <Text style={{ color: c.accent, fontSize: 13, fontWeight: '700' }}>{`✓ ${s.included}`}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ color: c.accent, fontSize: 13, fontWeight: '700' }}>{`✓ ${s.included}`}</Text>
+                      {f.onPress ? <Text style={{ color: c.muted, fontSize: 20, lineHeight: 22 }} accessibilityElementsHidden importantForAccessibility="no">›</Text> : null}
+                    </View>
                   )}
                 </Pressable>
                 {on && f.children ? <View style={{ paddingHorizontal: 16, paddingBottom: 14 }}>{f.children}</View> : null}
