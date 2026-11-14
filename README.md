@@ -94,6 +94,12 @@ Every release is tagged in git (`v1.13.0`). In the app's `package.json` pin the 
 ### 1.17.0
 
 - `<PremiumPill>` now has the approved look by default: the king and queen crowns and the tier name, gold on soft gold, the same as the paid plan pill. Pass `lock` for the older solid pill with a padlock. Apps can put it beside any paid feature's row (Data Export) instead of drawing their own.
+- Upgrading: every app's `PremiumPill` changes look. Pass `lock` to keep the old one.
+- A change of signed-in account clears the last account's tier, dates and welcome at once (until the new answer arrives, `loading` is true and the tier is free).
+- The Premium page's colors and store names come from the theme and strings: `success`, `successSoft`, `onTag`, `info`, `infoSoft`, `infoBadge`, `dangerSoft`, `dangerBadge`, and `storeName` / `storeAccount` / `storeCompany(platform)`. The website no longer says "App Store".
+- Continue to Cancel opens the store's sheet once Before You Go has closed (iPhone refused a sheet while another was closing).
+- Per-month prices never lose a cent to rounding (19.99 used to show 19.98).
+- The Plans screen's button and Restore link come back if the store call throws.
 
 ### 1.16.0
 

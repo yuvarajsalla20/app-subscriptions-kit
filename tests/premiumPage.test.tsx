@@ -213,6 +213,9 @@ describe('PremiumPage', () => {
     expect(payments.buyOffer).toHaveBeenCalledWith(offer);
     await press(m.button(DEFAULT_STRINGS.cancelSubscription));
     await press(m.button(DEFAULT_STRINGS.continueToCancel));
+    // The store's sheet opens only once Before You Go has slid away (iPhone cannot show one sheet while another closes).
+    expect(payments.openManage).not.toHaveBeenCalled();
+    await act(async () => { await new Promise((r) => setTimeout(r, 750)); });
     expect(payments.openManage).toHaveBeenCalledOnce();
   });
 

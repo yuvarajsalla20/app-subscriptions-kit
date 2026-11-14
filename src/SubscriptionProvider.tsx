@@ -144,7 +144,8 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
 
   useEffect(() => {
     setLoading(true);
-    // Another person signed in: the welcome was for someone else.
+    // Another person signed in: nothing of the last one's subscription may show (their tier, dates or welcome) until the new answer.
+    setState({ tier: 'free', source: 'free', server: null });
     setJustSubscribed(false);
     const stop = payments.watch(userId, (s) => {
       setState(s);

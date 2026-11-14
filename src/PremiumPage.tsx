@@ -7,6 +7,7 @@ import { isPlan, months, money, savings } from './pricing';
 import { shortDay } from './status';
 import { SubscriptionStatusCard } from './StatusCard';
 import { useSubscription } from './SubscriptionProvider';
+import { DEFAULT_THEME, type StorePlatform } from './theme';
 import { SubscriptionRow } from './SubscriptionRow';
 
 /** One feature on the Premium page. The app says what it is; the kit draws it locked, switched or included. */
@@ -73,8 +74,16 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   const ending = sub.server ? sub.server.willRenew === false : sub.renewal?.willRenew === false;
   const until = shortDay(sub.server?.activeUntil ?? sub.renewal?.until);
   const fail = (e: unknown) => onError?.(e);
-  const danger = c.danger ?? '#B42318';
-  const onDanger = c.onDanger ?? '#FFFFFF';
+  const danger = c.danger ?? DEFAULT_THEME.danger!;
+  const onDanger = c.onDanger ?? DEFAULT_THEME.onDanger!;
+  const success = c.success ?? DEFAULT_THEME.success!;
+  const successSoft = c.successSoft ?? DEFAULT_THEME.successSoft!;
+  const onTag = c.onTag ?? DEFAULT_THEME.onTag!;
+  const info = c.info ?? DEFAULT_THEME.info!;
+  const infoSoft = c.infoSoft ?? DEFAULT_THEME.infoSoft!;
+  const infoBadge = c.infoBadge ?? DEFAULT_THEME.infoBadge!;
+  const dangerSoft = c.dangerSoft ?? DEFAULT_THEME.dangerSoft!;
+  const dangerBadge = c.dangerBadge ?? DEFAULT_THEME.dangerBadge!;
 
   const [plans, setPlans] = useState<StorePlan[]>([]);
   const [offer, setOffer] = useState<StoreOffer | null>(null);
@@ -168,7 +177,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   const mark = (size: number, outline = false) => icon ?? <Crowns size={Math.round(size * 0.75)} outline={outline} {...crowns} />;
   const tag = (text: string, bg: string) => (
     <View style={{ backgroundColor: bg, borderRadius: 9, paddingHorizontal: 8, paddingVertical: 3 }}>
-      <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>{text}</Text>
+      <Text style={{ color: onTag, fontSize: 11, fontWeight: '800' }}>{text}</Text>
     </View>
   );
   const row = (label: string, detail: string | null, onPress: () => void, right?: ReactNode, first = false,
@@ -187,9 +196,9 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   );
 
   // ---- Restore Subscription: always tappable, and it always answers ----
-  const ios = Platform.OS !== 'android';
-  const store = ios ? 'App Store' : 'Google Play';
-  const account = ios ? 'Apple ID' : 'Google Account';
+  const platform: StorePlatform = Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'web';
+  const store = s.storeName(platform);
+  const account = s.storeAccount(platform);
   const restore = async () => {
     if (restoreBusy.current) return;
     restoreBusy.current = true;
@@ -225,13 +234,13 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
       case 'checking':
         return row(label, s.restoreChecking(store), restore, undefined, first, { detailColor: c.accent, end: <ActivityIndicator color={c.accent} />, busy: true });
       case 'allSet':
-        return row(label, s.restoreAllSet(tierLabel, account), restore, undefined, first, { detailColor: '#15803D', bold: true, end: badge('#15803D', '#FFFFFF', '✓'), tint: '#F0FDF4' });
+        return row(label, s.restoreAllSet(tierLabel, account), restore, undefined, first, { detailColor: success, bold: true, end: badge(success, onTag, '✓'), tint: successSoft });
       case 'done':
-        return row(label, s.restoreDone(tierLabel), restore, undefined, first, { detailColor: '#15803D', bold: true, end: badge('#15803D', '#FFFFFF', '✓'), tint: '#F0FDF4' });
+        return row(label, s.restoreDone(tierLabel), restore, undefined, first, { detailColor: success, bold: true, end: badge(success, onTag, '✓'), tint: successSoft });
       case 'none':
-        return row(label, s.restoreNone(account), restore, undefined, first, { detailColor: '#0369A1', bold: true, end: badge('#E0F2FE', '#0369A1', 'i'), tint: '#F0F9FF' });
+        return row(label, s.restoreNone(account), restore, undefined, first, { detailColor: info, bold: true, end: badge(infoBadge, info, 'i'), tint: infoSoft });
       case 'failed':
-        return row(label, s.restoreFailed(store), restore, undefined, first, { detailColor: danger, bold: true, end: badge('#FDE7E5', danger, '!'), tint: '#FEF3F2' });
+        return row(label, s.restoreFailed(store), restore, undefined, first, { detailColor: danger, bold: true, end: badge(dangerBadge, danger, '!'), tint: dangerSoft });
       default:
         return row(label, paid ? s.restoreHintPaid(tierLabel) : s.restoreHint, restore, undefined, first);
     }
@@ -263,7 +272,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
     <UpdatingBox
       waiting={updatingFrom !== null}
       done={updated}
-      company={ios ? 'Apple' : 'Google'}
+      company={s.storeCompany(platform)}
       art={updatingArt}
       mark={icon}
       onClose={() => { setUpdatingFrom(null); setUpdated(null); }}
@@ -337,7 +346,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
           {next
             ? row(s.changePlan, s.planStarts(labelOf(next), shortDay(sub.pendingSwitch!.startsAt)), onOpenPlans, undefined, true, { detailColor: c.accent, bold: true })
             : other
-              ? row(s.changePlan, s.planLine(labelOf(other), per(other)), onOpenPlans, savePct > 0 ? tag(s.saveTag(savePct), '#15803D') : null, true)
+              ? row(s.changePlan, s.planLine(labelOf(other), per(other)), onOpenPlans, savePct > 0 ? tag(s.saveTag(savePct), success) : null, true)
               : null}
           {restoreRow()}
         </View>
@@ -399,6 +408,20 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   // Free and after a cancel the Subscription section leads; a renewing subscriber sees the features first.
   const subscriptionFirst = !paid || ending;
   const close = () => setSheet(false);
+  // Continue to Cancel opens the store's sheet only once this one has gone: iPhone will not show a sheet while another is closing.
+  // onDismiss is iPhone only; elsewhere (and if it never comes) the effect below opens it after the slide-away.
+  const manageAfterClose = useRef(false);
+  const afterClose = () => {
+    if (!manageAfterClose.current) return;
+    manageAfterClose.current = false;
+    manage();
+  };
+  useEffect(() => {
+    if (sheet || !manageAfterClose.current) return;
+    const t = setTimeout(afterClose, Platform.OS === 'ios' ? 700 : 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheet]);
   return (
     <View style={{ gap: 14 }}>
       {top}
@@ -406,7 +429,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
       {subscriptionFirst ? actions : list}
       {subscriptionFirst ? list : actions}
       {sub.tester.available ? <SubscriptionRow onOpenPlans={onOpenPlans} {...look} /> : null}
-      <Modal visible={sheet} transparent animationType="slide" onRequestClose={close}>
+      <Modal visible={sheet} transparent animationType="slide" onRequestClose={close} onDismiss={afterClose}>
         <Pressable accessibilityLabel={s.close} onPress={close} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} />
         <View style={{ backgroundColor: c.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 36, gap: 12 }}>
           <View style={{ alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: c.border, marginBottom: 4 }} />
@@ -424,11 +447,11 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
           {switchTo ? (
             <View style={card}>
               {row(s.switchToPlan(labelOf(switchTo)), s.aboutPerMonth(per(switchTo), money(switchTo.price / (months(switchTo) ?? 1), switchTo.currency)),
-                () => { close(); onOpenPlans(); }, tag(s.saveTag(savings(switchTo, plans)), '#15803D'), true)}
+                () => { close(); onOpenPlans(); }, tag(s.saveTag(savings(switchTo, plans)), success), true)}
             </View>
           ) : null}
           {bigButton(s.keepPremium(tierLabel), '', c.accent, c.onAccent, close)}
-          <Pressable accessibilityRole="button" onPress={() => { close(); manage(); }} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
+          <Pressable accessibilityRole="button" onPress={() => { manageAfterClose.current = true; close(); }} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ color: danger, fontSize: 15, fontWeight: '700' }}>{s.continueToCancel}</Text>
           </Pressable>
         </View>
