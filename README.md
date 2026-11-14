@@ -91,6 +91,10 @@ The Plans screen has the app's logo (`header`) and Close in one row, then the pl
 
 Every release is tagged in git (`v1.13.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
 
+### 1.16.0
+
+- **A feature row can open its own page:** `PremiumFeature.onPress`. Once unlocked, a tap on a row without a switch opens the page where the feature lives (Data Export, which sits in Account under Your Data), and the row shows an arrow after Included. Locked, the tap still opens the plans. New string `opensPage` (the VoiceOver hint).
+
 ### 1.15.1
 
 - **No dead-end Change Plan:** on the longest plan (Yearly) the Premium page leaves out Change Plan, since the Plans screen only offers longer plans. A Yearly subscriber sees Cancel Subscription and Restore Subscription. A booked switch still shows in Change Plan. Moving down (Yearly to Monthly) stays with the store's own subscription settings.

@@ -138,6 +138,8 @@ export interface SubscriptionStrings {
   endsNote: string;
   /** Premium page: beside an unlocked feature with no switch. */
   included: string;
+  /** What VoiceOver adds on an unlocked feature row that opens its own page (`PremiumFeature.onPress`). */
+  opensPage: string;
   /** Premium page: under a locked feature with no line of its own. */
   lockedHint: string;
   /** Premium page: read out for a locked feature. */
@@ -280,6 +282,7 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   planName: (p) => `${p} plan`,
   endsNote: 'Auto-renew is off',
   included: 'Included',
+  opensPage: 'Opens its page',
   lockedHint: 'Upgrade to unlock',
   lockedLabel: 'locked. Opens the plans',
   autoRenewOn: 'Turn auto-renew back on',
