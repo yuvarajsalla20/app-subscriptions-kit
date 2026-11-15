@@ -108,6 +108,8 @@ export interface SubscriptionStrings {
   switchPlan: (planLabel: string) => string;
   /** Badge on the plan the account is on now. */
   currentPlan: string;
+  /** Shown above the main button when a subscriber taps a plan that can't be picked (for example Monthly while on Yearly). `current` is null when the store hasn't named the plan yet. */
+  planNotOffered: (planLabel: string, current: string | null, tierLabel: string) => string;
   /** Badge over the account's own column in the Free vs paid table. */
   current: string;
   /** The compare table's first column heading. */
@@ -263,6 +265,7 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   switchTo: (t) => `Switch to ${t}`,
   switchPlan: (p) => `Switch to ${p}`,
   currentPlan: 'Current plan',
+  planNotOffered: (p, cur, t) => (cur ? `You're on ${t} ${cur}. ${p} isn't offered while it's active.` : `You already have ${t}.`),
   current: 'Current',
   feature: 'Feature',
   alreadySubscribed: 'Already subscribed?',

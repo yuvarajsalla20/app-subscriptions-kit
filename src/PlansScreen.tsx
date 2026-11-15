@@ -98,7 +98,8 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   const others = canSwitch ? targets : shown;
   // With a switch booked, the plan in use stays the one marked; nothing else can be picked until the switch starts.
   const chosen = (pending ? current : null) ?? shown.find((x) => x.cfg.id === pick && !(canSwitch && x.cfg.id === current!.cfg.id))
-    ?? (canSwitch ? others.find((x) => x.cfg.badge) ?? others.find((x) => x.cfg.selected) ?? others[0] : current ?? shown.find((x) => x.cfg.selected) ?? shown[0]);
+    // A subscriber whose plan the store hasn't named yet sees no row picked: never a plan they don't pay for.
+    ?? (canSwitch ? others.find((x) => x.cfg.badge) ?? others.find((x) => x.cfg.selected) ?? others[0] : has ? current : shown.find((x) => x.cfg.selected) ?? shown[0]);
   const switching = canSwitch && !!chosen && chosen.cfg.id !== current!.cfg.id;
   const live = sub.ready && store.length > 0;
   const tabLabel = config.tierLabels[tab]!;
@@ -211,13 +212,14 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
             const on = cfg.id === chosen?.cfg.id;
             const isCurrent = cfg.id === current?.cfg.id;
             // While subscribed, only the allowed other plans can be picked where switching is offered; the current one never then.
+            // A row that can't be picked still answers a tap with why, so a tap never looks ignored.
             const pickable = !has || (canSwitch ? targets.some((x) => x.cfg.id === cfg.id) : isCurrent);
             const pm = perMonth(sp);
             const saved = savings(sp, source);
             const isNext = cfg.id === pending?.cfg.id;
             const tag = isCurrent ? s.currentPlan : isNext ? s.nextPlan : cfg.badge;
             return (
-              <Pressable key={cfg.id} accessibilityRole="radio" accessibilityState={{ checked: on, disabled: !pickable }} accessibilityLabel={`${cfg.label}, ${sp.priceString}${isCurrent ? `, ${s.currentPlan}` : ''}${isNext ? `, ${s.planStarts(cfg.label, pendingDay)}` : ''}`} onPress={() => setPick(cfg.id)} disabled={!pickable}
+              <Pressable key={cfg.id} accessibilityRole="radio" accessibilityState={{ checked: on, disabled: !pickable }} accessibilityLabel={`${cfg.label}, ${sp.priceString}${isCurrent ? `, ${s.currentPlan}` : ''}${isNext ? `, ${s.planStarts(cfg.label, pendingDay)}` : ''}`} onPress={() => (pickable ? setPick(cfg.id) : setNote({ text: s.planNotOffered(cfg.label, current ? current.cfg.label : null, tabLabel), good: false, at: 'footer' }))}
                 style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: tag ? 18 : 14, paddingBottom: 14, borderRadius: c.radius + 4, backgroundColor: isCurrent ? c.premiumSoft : c.surface, opacity: pickable || isCurrent ? 1 : 0.6 },
                   isCurrent ? { borderWidth: 2, borderColor: c.premium } : on || isNext ? { borderWidth: 2, borderColor: c.accent } : lift, isNext ? { opacity: 1 } : null]}>
                 {tag ? (

@@ -2,6 +2,12 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 1.18.2
+
+- **Plans screen, a tap is never ignored:** while subscribed, a plan that can't be picked (Monthly while on Yearly, where the app offers longer plans only) still answers a tap. The pick stays where it was and a line above the main button says why: "You're on Premium Yearly. Monthly isn't offered while it's active." New string `planNotOffered(plan, current, tier)`.
+- **No wrong plan shown as picked:** a subscriber whose plan the store hasn't named yet no longer sees the first plan (Yearly) picked. No row is picked until the store says which plan it is.
+- Nothing to change in apps. No in-app switch from a longer plan to a shorter one is added.
+
 ## 1.18.1
 
 Nothing to change in apps: the kit's own tests now run on React 19.3.0 and React Native 0.88.1, the versions the apps ship (they ran on React 18.3 and React Native 0.76 before). Code is unchanged.
