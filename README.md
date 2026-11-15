@@ -91,6 +91,12 @@ The Plans screen has the app's logo (`header`) and Close in one row, then the pl
 
 Every release is tagged in git (`v1.13.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
 
+### 1.18.0
+
+- **Renew and Cancel feel instant:** "Updating Your Subscription…" shows the moment Apple's manage sheet closes (with app-payments-kit 2.5.0's `openManage(onClosed)`; with an older payments kit it shows after the first check, as before). It stays until what the person changed in the sheet shows (the tier, auto-renew, the plan or a booked switch), then the page and "You're All Set!" change together. A fresher end date alone no longer closes it early.
+- **Renew line fits one line:** `continuesAfter` is now "Keep Premium Monthly beyond Dec 12, 2026" (was "Turn auto-renew back on to keep … after …"). The date under Renew and Cancel never breaks across lines.
+- `useSubscription().openManage(onClosed?)` and the payments `openManage?(onClosed?)` take the new callback; both are optional, so nothing else changes.
+
 ### 1.17.0
 
 - `<PremiumPill>` now has the approved look by default: the king and queen crowns and the tier name, gold on soft gold, the same as the paid plan pill. Pass `lock` for the older solid pill with a padlock. Apps can put it beside any paid feature's row (Data Export) instead of drawing their own.

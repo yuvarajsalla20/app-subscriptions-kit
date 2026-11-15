@@ -108,13 +108,13 @@ describe('PremiumPage', () => {
     expect(payments.openManage).toHaveBeenCalled();
   });
 
-  it('dates carry the year and name the plan; Renew says what turning auto-renew on does', async () => {
+  it('dates carry the year, name the plan and never break; Renew says it in one short line', async () => {
     const payments = fakePayments();
     const m = await mount(page(payments));
     await act(async () => payments.emit(renewing));
-    expect(m.shown('You keep Premium Monthly until Jan 15, 2099')).toBe(true);
+    expect(m.shown('You keep Premium Monthly until Jan\u00A015,\u00A02099')).toBe(true);
     await act(async () => payments.emit(ended));
-    expect(m.shown('Turn auto-renew back on to keep Premium Monthly after Jan 15, 2099')).toBe(true);
+    expect(m.shown('Keep Premium Monthly beyond Jan\u00A015,\u00A02099')).toBe(true);
     expect(m.texts().some((t) => t.startsWith('What You Lose After') && t.includes('2099'))).toBe(false); // no lose list passed
   });
 
@@ -150,6 +150,30 @@ describe('PremiumPage', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('shows Updating the moment the store screen closes, and keeps it through a date-only change until auto-renew is back on', async () => {
+    let closeSheet: () => void = () => {};
+    let finish: () => void = () => {};
+    const payments = fakePayments({ openManage: vi.fn((onClosed?: () => void) => new Promise<void>((done) => { closeSheet = () => onClosed?.(); finish = done; })) });
+    const m = await mount(page(payments, vi.fn(), vi.fn(), { beforeCancel: false }));
+    await act(async () => payments.emit(ended));
+    await press(m.button(DEFAULT_STRINGS.renewSubscription));
+    expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(false); // Apple's sheet is still up
+    await act(async () => closeSheet());
+    expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(true); // before the store is asked again
+    // A fresher end date arrives first, auto-renew still off: still updating, nothing celebrated yet.
+    await act(async () => payments.emit({ ...ended, renewal: { ...ended.renewal, until: '2099-01-15T13:00:00Z' } }));
+    expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(true);
+    expect(m.shown(DEFAULT_STRINGS.allSet)).toBe(false);
+    expect(m.shown(DEFAULT_STRINGS.renewSubscription)).toBe(true);
+    // Auto-renew is on: the page and "You're All Set!" change together.
+    await act(async () => payments.emit(renewing));
+    expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(false);
+    expect(m.shown(DEFAULT_STRINGS.allSet)).toBe(true);
+    expect(m.shown(DEFAULT_STRINGS.cancelSubscription)).toBe(true);
+    await act(async () => finish());
+    expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(false);
   });
 
   it('the app can swap the swinging art', async () => {

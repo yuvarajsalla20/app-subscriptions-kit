@@ -57,7 +57,8 @@ export interface PaymentsLike {
   redeemCode?(code?: string): Promise<void>;
   /** False where there is no code box (the website). Left out means codes are offered. */
   canRedeemCode?: boolean;
-  openManage?(): Promise<void>;
+  /** `onClosed` (app-payments-kit 2.5.0+): called the moment the store's own manage screen closes, before the checks after it. */
+  openManage?(onClosed?: () => void): Promise<void>;
   /** A subscriber discount by its store id; null when the store has none. */
   loadOffer?(offerId: string): Promise<StoreOffer | null>;
   buyOffer?(offer: StoreOffer): Promise<PurchaseResult>;
