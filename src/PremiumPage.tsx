@@ -68,6 +68,19 @@ const keepTogether = (date: string) => date.replace(/ /g, '\u00A0');
 const UPDATING_MS = 20_000;
 /** How long the box says what changed before it closes by itself. */
 export const UPDATED_MS = 2_200;
+/**
+ * The page state "Updating…" was waiting to change from, when the store still hadn't confirmed after UPDATING_MS. Kept outside
+ * the page so that leaving Settings and coming back still shows the calm line and asks the store again. Null when nothing waits.
+ */
+let unconfirmedFrom: string | null = null;
+let unconfirmedAt = 0;
+/** How long the calm line may wait. Past this (also after Done with nothing changed) it goes, so it never stays for good. */
+export const UNCONFIRMED_MS = 15 * 60_000;
+/** The waiting state if it is still fresh; an old one is dropped. */
+const stillUnconfirmed = () => {
+  if (unconfirmedFrom !== null && Date.now() - unconfirmedAt > UNCONFIRMED_MS) unconfirmedFrom = null;
+  return unconfirmedFrom;
+};
 
 export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, featuresOpen, stayOfferId, beforeCancel = true, updatingArt, ...look }: PremiumPageProps) {
   const { c, s, Text } = useLook(look);
@@ -100,6 +113,8 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   stateNow.current = stateKey;
   const [updatingFrom, setUpdatingFrom] = useState<string | null>(null);
   const [updated, setUpdated] = useState<UpdatingDone | null>(null);
+  // After "Updating…" gave up waiting: a calm line until the store shows the change. Survives leaving the page (see unconfirmedFrom).
+  const [waitingFrom, setWaitingFrom] = useState<string | null>(() => (stillUnconfirmed() === stateKey ? stateKey : null));
   const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guards that read now, not at the last render: two quick taps never start two store calls.
   const restoreBusy = useRef(false);
@@ -118,6 +133,13 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
     storeBusy.current = true;
     void job().catch(fail).finally(() => { storeBusy.current = false; });
   };
+  // Opening the page while a change is still unconfirmed asks the store again. If it changed while the page was closed, the line just goes.
+  useEffect(() => {
+    if (stillUnconfirmed() === null) return;
+    if (unconfirmedFrom !== stateNow.current) unconfirmedFrom = null;
+    else void sub.refresh().catch(fail);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     let live = true;
     sub.loadPlans().then((p) => { if (live) setPlans(p); }).catch(() => undefined);
@@ -148,25 +170,48 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   const next = sub.pendingSwitch ? ofTier.find((p) => p.id === sub.pendingSwitch!.planId) : undefined;
   // "Premium Monthly" when the plan is known, so a date line says which plan it is about.
   const planName = mine ? `${tierLabel} ${labelOf(mine)}` : tierLabel;
-  // The box waits for the change (or 20 seconds), then says what changed for a moment.
+  /** The box says what changed for a moment: "You're All Set!" or "Subscription Updated", with the date line. */
+  const confirmed = () => {
+    const party = paid && !ending;
+    const nextLabel = next ? labelOf(next) : '';
+    const line = !until ? ''
+      : sub.pendingSwitch && nextLabel ? s.switchingTo(nextLabel, shortDay(sub.pendingSwitch.startsAt) || until)
+      : party ? s.renewsOn(planName, until)
+      : paid ? s.keepUntil(planName, until)
+      : '';
+    setUpdated({ title: party ? s.allSet : s.subscriptionUpdated, line, party });
+  };
+  // The box waits for the change (or 20 seconds). With no answer by then, the calm line takes over and waits on.
   useEffect(() => {
     if (updatingFrom === null) return;
     if (stateKey !== updatingFrom) {
       setUpdatingFrom(null);
-      const party = paid && !ending;
-      const nextLabel = next ? labelOf(next) : '';
-      const line = !until ? ''
-        : sub.pendingSwitch && nextLabel ? s.switchingTo(nextLabel, shortDay(sub.pendingSwitch.startsAt) || until)
-        : party ? s.renewsOn(planName, until)
-        : paid ? s.keepUntil(planName, until)
-        : '';
-      setUpdated({ title: party ? s.allSet : s.subscriptionUpdated, line, party });
+      confirmed();
       return;
     }
-    const t = setTimeout(() => setUpdatingFrom(null), UPDATING_MS);
+    const t = setTimeout(() => {
+      unconfirmedFrom = updatingFrom;
+      unconfirmedAt = Date.now();
+      setWaitingFrom(updatingFrom);
+      setUpdatingFrom(null);
+    }, UPDATING_MS);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [updatingFrom, stateKey]);
+  // The line never stays for good: it goes once UNCONFIRMED_MS has passed, even with the page open.
+  useEffect(() => {
+    if (waitingFrom === null) return;
+    const t = setTimeout(() => { if (stillUnconfirmed() === null) setWaitingFrom(null); }, Math.max(0, unconfirmedAt + UNCONFIRMED_MS - Date.now()) + 50);
+    return () => clearTimeout(t);
+  }, [waitingFrom]);
+  // A late answer still ends with "You're All Set!" or "Subscription Updated", and the calm line goes.
+  useEffect(() => {
+    if (waitingFrom === null || stateKey === waitingFrom) return;
+    unconfirmedFrom = null;
+    setWaitingFrom(null);
+    confirmed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waitingFrom, stateKey]);
   useEffect(() => {
     if (!updated) return;
     const t = setTimeout(() => setUpdated(null), UPDATED_MS);
@@ -270,7 +315,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
     const before = stateNow.current;
     // "Updating…" from the moment the store's screen closes, unless the change is already here. It stays until the change shows,
     // then the page and "You're All Set!" change together.
-    const wait = () => { if (alive.current && stateNow.current === before) setUpdatingFrom(before); };
+    const wait = () => { if (alive.current && stateNow.current === before) { unconfirmedFrom = null; setWaitingFrom(null); setUpdatingFrom(before); } };
     await sub.openManage(wait);
     wait(); // app-payments-kit before 2.5.0 does not say when the screen closed
   });
@@ -343,6 +388,12 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
     actions = (
       <>
         {heading(s.subscription)}
+        {waitingFrom !== null ? (
+          <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: c.radius, backgroundColor: infoSoft }}>
+            <ActivityIndicator size="small" color={info} />
+            <Text style={{ flex: 1, color: c.text, fontSize: 14, lineHeight: 20 }}>{s.notConfirmedYet(s.storeCompany(platform))}</Text>
+          </View>
+        ) : null}
         {ending
           ? bigButton(s.renewSubscription, until ? s.continuesAfter(planName, keepTogether(until)) : '', c.accent, c.onAccent, manage)
           : bigButton(s.cancelSubscription, until ? s.keepUntil(planName, keepTogether(until)) : '', danger, onDanger, hasSheet ? () => setSheet(true) : manage)}

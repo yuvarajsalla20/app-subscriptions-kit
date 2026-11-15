@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Pressable, Text } from 'react-native';
-import { Crowns, DEFAULT_STRINGS, PlanBadge, PremiumPill, PremiumPage, SubscriptionProvider, UPDATED_MS, defineSubscription, statusLines, useSubscription } from '../src';
+import { Crowns, DEFAULT_STRINGS, PlanBadge, PremiumPill, PremiumPage, SubscriptionProvider, UNCONFIRMED_MS, UPDATED_MS, defineSubscription, statusLines, useSubscription } from '../src';
 import { act, fakePayments, mount, plan, press } from './render';
 
 const config = defineSubscription({
@@ -217,6 +217,55 @@ describe('PremiumPage', () => {
       expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(true);
       await act(async () => { await vi.advanceTimersByTimeAsync(21_000); });
       expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('when Apple is slow: a calm line after Updating, a recheck when the page opens again, and All Set once it answers', async () => {
+    vi.useFakeTimers();
+    try {
+      const calm = DEFAULT_STRINGS.notConfirmedYet('Apple');
+      const payments = fakePayments({ refresh: vi.fn(async () => undefined) });
+      const m = await mount(page(payments, vi.fn(), vi.fn(), { beforeCancel: false }));
+      await act(async () => payments.emit(renewing));
+      expect(m.shown(calm)).toBe(false);
+      await press(m.button(DEFAULT_STRINGS.cancelSubscription));
+      await act(async () => { await vi.advanceTimersByTimeAsync(21_000); });
+      // The loader gives up waiting, but the page says so instead of going quiet.
+      expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(false);
+      expect(m.shown(calm)).toBe(true);
+      expect(payments.refresh).not.toHaveBeenCalled();
+      // Leaving Settings and coming back (the app's provider stays): the line is still there and the store is asked again.
+      const shell = (show: boolean) => (
+        <SubscriptionProvider config={config} payments={payments} userId="u1">
+          {show ? <PremiumPage onOpenPlans={vi.fn()} features={features()} beforeCancel={false} /> : null}
+        </SubscriptionProvider>
+      );
+      await act(async () => m.root.update(shell(false)));
+      expect(m.shown(calm)).toBe(false);
+      await act(async () => m.root.update(shell(true)));
+      expect(m.shown(calm)).toBe(true);
+      expect(payments.refresh).toHaveBeenCalledOnce();
+      // Apple answers late: the line goes and the page still confirms the change.
+      await act(async () => payments.emit(ended));
+      expect(m.shown(calm)).toBe(false);
+      expect(m.shown(DEFAULT_STRINGS.subscriptionUpdated)).toBe(true);
+      // Nothing is waiting any more: opening the page again asks nothing.
+      await act(async () => m.root.update(shell(false)));
+      await act(async () => m.root.update(shell(true)));
+      expect(m.shown(calm)).toBe(false);
+      expect(payments.refresh).toHaveBeenCalledOnce();
+      // After Done with nothing changed, the line waits a while and then goes by itself.
+      await press(m.button(DEFAULT_STRINGS.renewSubscription));
+      await act(async () => { await vi.advanceTimersByTimeAsync(21_000); });
+      expect(m.shown(calm)).toBe(true);
+      await act(async () => { await vi.advanceTimersByTimeAsync(UNCONFIRMED_MS); });
+      expect(m.shown(calm)).toBe(false);
+      await act(async () => m.root.update(shell(false)));
+      await act(async () => m.root.update(shell(true)));
+      expect(m.shown(calm)).toBe(false);
+      expect(payments.refresh).toHaveBeenCalledOnce();
     } finally {
       vi.useRealTimers();
     }

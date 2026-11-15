@@ -206,6 +206,8 @@ export interface SubscriptionStrings {
   /** The box once a change shows: the title when the plan now renews, and otherwise. */
   allSet: string;
   subscriptionUpdated: string;
+  /** Calm line on the Premium page when the store hasn't confirmed a change after "Updating…" (it stays until the change shows). */
+  notConfirmedYet: (company: string) => string;
   /** Its line once the plan renews: "Premium Monthly renews on Dec 12, 2026". */
   renewsOn: (planName: string, date: string) => string;
   restoreChecking: (store: string) => string;
@@ -336,6 +338,7 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   updatingBody: (company) => `${company} is confirming your change. This page will update by itself.`,
   allSet: "You're All Set!",
   subscriptionUpdated: 'Subscription Updated',
+  notConfirmedYet: (company) => `${company} hasn't confirmed a change yet. This page will update the moment it does.`,
   renewsOn: (t, d) => `${t} renews on ${d}`,
   restoreChecking: (store) => `Checking With the ${store}…`,
   restoreAllSet: (tier, account) => `You're All Set. ${tier} Is Active on This ${account}.`,
