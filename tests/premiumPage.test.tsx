@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Pressable, Text } from 'react-native';
-import { DEFAULT_STRINGS, PlanBadge, PremiumPage, SubscriptionProvider, UPDATED_MS, defineSubscription, statusLines, useSubscription } from '../src';
+import { Crowns, DEFAULT_STRINGS, PlanBadge, PremiumPill, PremiumPage, SubscriptionProvider, UPDATED_MS, defineSubscription, statusLines, useSubscription } from '../src';
 import { act, fakePayments, mount, plan, press } from './render';
 
 const config = defineSubscription({
@@ -173,6 +173,16 @@ describe('PremiumPage', () => {
     expect(m.label('Monthly')).toBeTruthy();
   });
 
+  it('PremiumPill has the crowns and the tier name by default', async () => {
+    const m = await mount(
+      <SubscriptionProvider config={config} payments={fakePayments()} userId="u1">
+        <PremiumPill label="Premium" />
+      </SubscriptionProvider>,
+    );
+    expect(m.shown('Premium')).toBe(true);
+    expect(m.root.root.findAllByType(Crowns).length).toBe(1);
+  });
+
   it('the updating line goes by itself when nothing changed', async () => {
     vi.useFakeTimers();
     try {
@@ -203,6 +213,9 @@ describe('PremiumPage', () => {
     expect(payments.buyOffer).toHaveBeenCalledWith(offer);
     await press(m.button(DEFAULT_STRINGS.cancelSubscription));
     await press(m.button(DEFAULT_STRINGS.continueToCancel));
+    // The store's sheet opens only once Before You Go has slid away (iPhone cannot show one sheet while another closes).
+    expect(payments.openManage).not.toHaveBeenCalled();
+    await act(async () => { await new Promise((r) => setTimeout(r, 750)); });
     expect(payments.openManage).toHaveBeenCalledOnce();
   });
 

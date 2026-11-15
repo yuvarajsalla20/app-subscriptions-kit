@@ -8,10 +8,13 @@ export function months(p: Pick<StorePlan, 'period'>): number | null {
   return null;
 }
 
+/** Rounds down to the cent without losing one to floating point (19.99 stays 19.99, never 19.98). */
+const downToCent = (n: number): number => Math.floor(Math.round(n * 1e6) / 1e4) / 100;
+
 /** A price in the store's own currency, rounded down to the cent. */
 export function money(n: number, currency: string): string {
   try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(Math.floor(n * 100) / 100);
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(downToCent(n));
   } catch {
     return `${currency} ${n.toFixed(2)}`;
   }
@@ -20,7 +23,7 @@ export function money(n: number, currency: string): string {
 /** Price per month, rounded down, for plans of more than one month. */
 export function perMonth(p: StorePlan): number | null {
   const m = months(p);
-  return m && m > 1 ? Math.floor((p.price / m) * 100) / 100 : null;
+  return m && m > 1 ? downToCent(p.price / m) : null;
 }
 
 /**

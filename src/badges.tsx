@@ -5,15 +5,26 @@ import { isPlan } from './pricing';
 import { DEFAULT_STRINGS, type SubscriptionStrings } from './theme';
 import { useSubscription, type SubscriptionState } from './SubscriptionProvider';
 
-/** The "Premium" pill: a lock and the tier name, in the premium color. */
-export function PremiumPill({ tier, label, ...look }: LookProps & { tier?: string; label?: string }) {
+/**
+ * The "Premium" pill beside a paid feature, such as Data Export in Settings: the king and queen crowns and the tier name, gold on soft gold (the approved look, the same as the paid plan pill).
+ * `lock` draws the older solid pill with a padlock instead.
+ */
+export function PremiumPill({ tier, label, lock, ...look }: LookProps & { tier?: string; label?: string; lock?: boolean }) {
   const { c, Text } = useLook(look);
   const { config } = useSubscription();
   const name = label ?? config.tierLabels[tier ?? config.tiers[1]!] ?? '';
+  if (lock) {
+    return (
+      <View accessibilityRole="text" accessibilityLabel={name} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: c.premium, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
+        <Lock color={c.onPremium} size={11} />
+        <Text style={{ color: c.onPremium, fontSize: 11, fontWeight: '800' }}>{name}</Text>
+      </View>
+    );
+  }
   return (
-    <View accessibilityRole="text" accessibilityLabel={name} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: c.premium, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
-      <Lock color={c.onPremium} size={11} />
-      <Text style={{ color: c.onPremium, fontSize: 11, fontWeight: '800' }}>{name}</Text>
+    <View accessibilityRole="text" accessibilityLabel={name} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', backgroundColor: c.premiumSoft, borderColor: c.premium, borderWidth: 1, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 }}>
+      <Crowns size={11} king={c.king} kingFill={c.kingFill} queen={c.queen} queenFill={c.queenFill} />
+      <Text style={{ color: c.premiumText ?? c.premium, fontSize: 12, fontWeight: '800' }}>{name}</Text>
     </View>
   );
 }

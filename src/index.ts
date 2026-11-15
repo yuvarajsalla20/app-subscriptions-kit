@@ -10,7 +10,7 @@ export { SubscriptionRow } from './SubscriptionRow';
 export { SubscriptionStatusCard } from './StatusCard';
 export { PremiumPage, UPDATED_MS, type PremiumFeature, type PremiumPageProps } from './PremiumPage';
 export { shortDay, statusLines, type StatusLines } from './status';
-export { DEFAULT_STRINGS, DEFAULT_THEME, type SubscriptionComponents, type SubscriptionStrings, type SubscriptionTheme } from './theme';
+export { DEFAULT_STRINGS, DEFAULT_THEME, type StorePlatform, type SubscriptionComponents, type SubscriptionStrings, type SubscriptionTheme } from './theme';
 export { Crowns, Diamond } from './look';
 export type { LookProps } from './look';
 export type { PaymentsLike, PurchaseResult, RenewalInfo, ServerInfo, StoreOffer, StorePlan, WatchState } from './payments';

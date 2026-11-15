@@ -42,6 +42,17 @@ export interface SubscriptionTheme {
   hudAccent?: string;
   /** The confetti colors when a change is confirmed. */
   confetti?: readonly string[];
+  /** Good news on the Premium page (Restore found it, the Save tag): the words, the soft row behind them, and text on a solid tag. */
+  success?: string;
+  successSoft?: string;
+  onTag?: string;
+  /** Neutral news (Restore found nothing): the words, the soft row, and the round badge. */
+  info?: string;
+  infoSoft?: string;
+  infoBadge?: string;
+  /** A problem (Restore could not reach the store): the soft row and the round badge, with the danger color. */
+  dangerSoft?: string;
+  dangerBadge?: string;
 }
 
 export const DEFAULT_THEME: SubscriptionTheme = {
@@ -68,7 +79,18 @@ export const DEFAULT_THEME: SubscriptionTheme = {
   onHud: '#FFFFFF',
   hudAccent: '#FFC23D',
   confetti: ['#4FD1C0', '#FB923C', '#A78BFA', '#FBBF24', '#F472B6'],
+  success: '#15803D',
+  successSoft: '#F0FDF4',
+  onTag: '#FFFFFF',
+  info: '#0369A1',
+  infoSoft: '#F0F9FF',
+  infoBadge: '#E0F2FE',
+  dangerSoft: '#FEF3F2',
+  dangerBadge: '#FDE7E5',
 };
+
+/** Where the person's purchases live, for the Restore and Updating words. */
+export type StorePlatform = 'ios' | 'android' | 'web';
 
 /** The app's own Text component, so the screens use its fonts. Plain React Native Text is the default. */
 export interface SubscriptionComponents {
@@ -175,6 +197,10 @@ export interface SubscriptionStrings {
   updatingSubscription: string;
   /** Under it in the box. `company` is "Apple" or "Google". */
   updatingBody: (company: string) => string;
+  /** The store, the account it is tied to and its company, per platform: "App Store", "Apple ID", "Apple". */
+  storeName: (platform: StorePlatform) => string;
+  storeAccount: (platform: StorePlatform) => string;
+  storeCompany: (platform: StorePlatform) => string;
   /** The box once a change shows: the title when the plan now renews, and otherwise. */
   allSet: string;
   subscriptionUpdated: string;
@@ -301,6 +327,9 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   restoreHint: 'Already paid on another device?',
   restoreHintPaid: (tier) => `${tier} Missing on a Device? Tap to Check.`,
   updatingSubscription: 'Updating Your Subscription…',
+  storeName: (p) => (p === 'ios' ? 'App Store' : p === 'android' ? 'Google Play' : 'Store'),
+  storeAccount: (p) => (p === 'ios' ? 'Apple ID' : p === 'android' ? 'Google Account' : 'Account'),
+  storeCompany: (p) => (p === 'ios' ? 'Apple' : p === 'android' ? 'Google' : 'The store'),
   updatingBody: (company) => `${company} is confirming your change. This page will update by itself.`,
   allSet: "You're All Set!",
   subscriptionUpdated: 'Subscription Updated',

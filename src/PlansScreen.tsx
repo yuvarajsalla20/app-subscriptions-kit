@@ -132,15 +132,25 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
     }
     if (!live || !chosen) return notYet('footer');
     setBusy('buy'); setNote(null);
-    after(await sub.buy(chosen.sp), s.welcome(tabLabel), s.boughtNotActive, 'footer');
-    setBusy('');
+    try {
+      after(await sub.buy(chosen.sp), s.welcome(tabLabel), s.boughtNotActive, 'footer');
+    } catch {
+      setNote({ text: s.pricesFailed, good: false, at: 'footer' });
+    } finally {
+      setBusy('');
+    }
   };
   const restore = async () => {
     if (!sub.ready) return notYet('box');
     setBusy('restore'); setNote(null);
-    const r = await sub.restore();
-    after(r, s.restored(r.ok ? config.tierLabels[r.tier] ?? '' : ''), s.nothingToRestore, 'box');
-    setBusy('');
+    try {
+      const r = await sub.restore();
+      after(r, s.restored(r.ok ? config.tierLabels[r.tier] ?? '' : ''), s.nothingToRestore, 'box');
+    } catch {
+      setNote({ text: s.pricesFailed, good: false, at: 'box' });
+    } finally {
+      setBusy('');
+    }
   };
   // iPhone shows Apple's own code sheet; elsewhere the code is typed here and sent to the store.
   const openCode = () => (sub.ready && Platform.OS === 'ios' ? void sub.redeemCode('') : setCodeOpen(true));
