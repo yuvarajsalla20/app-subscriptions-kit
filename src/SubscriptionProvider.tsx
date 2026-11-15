@@ -65,7 +65,8 @@ export interface SubscriptionState {
   redeemCode(code?: string): Promise<void>;
   /** Whether to offer "Have a code?". False on the website, where store codes can't be used. */
   canRedeemCode: boolean;
-  openManage(): Promise<void>;
+  /** The store's manage screen. `onClosed` runs as soon as it closes (with app-payments-kit 2.5.0+), before the store is asked again. */
+  openManage(onClosed?: () => void): Promise<void>;
   /** A subscriber discount by its store id; null when there is none (or the payments object can't sell one). */
   loadOffer(offerId: string): Promise<StoreOffer | null>;
   buyOffer(offer: StoreOffer): Promise<PurchaseResult>;
@@ -194,7 +195,7 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
       redeemCode: async (code) => { if (await grownUp()) await payments.redeemCode?.(code); },
       // Before purchases open, the box stays so the screen can say "not open yet"; once open, only where the provider takes codes.
       canRedeemCode: !payments.ready || payments.canRedeemCode !== false,
-      openManage: async () => { if (await grownUp()) await payments.openManage?.(); },
+      openManage: async (onClosed) => { if (await grownUp()) await payments.openManage?.(onClosed); },
       loadOffer: async (id) => (payments.ready && payments.loadOffer && id ? payments.loadOffer(id).catch(() => null) : null),
       buyOffer: async (offer) => ((await grownUp()) && payments.buyOffer ? settle(await payments.buyOffer(offer)) : CANCELLED),
       switchPlan: async (plan) => {

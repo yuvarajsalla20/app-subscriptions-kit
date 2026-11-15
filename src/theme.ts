@@ -182,7 +182,7 @@ export interface SubscriptionStrings {
   /** Under Cancel Subscription: "You keep Premium Monthly until Dec 12, 2026". `tierLabel` includes the plan when known. */
   keepUntil: (tierLabel: string, date: string) => string;
   renewSubscription: string;
-  /** Under Renew Subscription: "Turn auto-renew back on to keep Premium Monthly after Dec 12, 2026". `tierLabel` includes the plan when known. */
+  /** Under Renew Subscription, short enough for one line: "Keep Premium Monthly beyond Dec 12, 2026". `tierLabel` includes the plan when known. The date never breaks. */
   continuesAfter: (tierLabel: string, date: string) => string;
   changePlan: string;
   /** Under Change Plan: "Yearly · $29.99/year". */
@@ -320,7 +320,7 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   cancelSubscription: 'Cancel Subscription',
   keepUntil: (t, d) => `You keep ${t} until ${d}`,
   renewSubscription: 'Renew Subscription',
-  continuesAfter: (t, d) => `Turn auto-renew back on to keep ${t} after ${d}`,
+  continuesAfter: (t, d) => `Keep ${t} beyond ${d}`,
   changePlan: 'Change Plan',
   planLine: (p, price) => `${p} · ${price}`,
   restoreSubscription: 'Restore Subscription',

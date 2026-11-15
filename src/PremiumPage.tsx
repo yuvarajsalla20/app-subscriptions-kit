@@ -62,6 +62,8 @@ type RestoreState = 'idle' | 'checking' | 'allSet' | 'done' | 'none' | 'failed';
  * card, the features (closed), then Cancel Subscription (with Before You Go first), Change Plan (not on the longest plan) and Restore. After a
  * cancel: Ends, then Renew Subscription and what is lost, then the features. Right after a purchase: a welcome card.
  */
+/** A date that never breaks across two lines ("Nov 15, 2026", not "Nov 15," then "2026"). */
+const keepTogether = (date: string) => date.replace(/ /g, '\u00A0');
 /** How long "Updating Your Subscription…" may show when nothing changes (the store's manage screen was closed as it was). */
 const UPDATING_MS = 20_000;
 /** How long the box says what changed before it closes by itself. */
@@ -90,8 +92,10 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   const [open, setOpen] = useState<boolean | null>(null);
   const [sheet, setSheet] = useState(false);
   const [restoring, setRestoring] = useState<RestoreState>('idle');
-  // After the store's manage screen closes: "Updating Your Subscription…" until the account's state changes (or 20 seconds).
-  const stateKey = JSON.stringify([sub.tier, sub.renewal, sub.server?.willRenew ?? null, sub.server?.activeUntil ?? null]);
+  // After the store's manage screen closes: "Updating Your Subscription…" until what the person changed there shows (or 20 seconds).
+  // Only what the sheet can change counts (the tier, auto-renew, the plan, a booked switch). A fresher end date alone is not the
+  // answer: it used to close the loader early, and the page then changed by itself a few seconds later.
+  const stateKey = JSON.stringify([sub.tier, ending, sub.renewal?.productId ?? null, sub.pendingSwitch?.planId ?? null]);
   const stateNow = useRef(stateKey);
   stateNow.current = stateKey;
   const [updatingFrom, setUpdatingFrom] = useState<string | null>(null);
@@ -264,9 +268,11 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
 
   const manage = () => oneAtATime(async () => {
     const before = stateNow.current;
-    await sub.openManage();
-    // The first check after the screen closed may already show the change; otherwise say it is on its way.
-    if (alive.current && stateNow.current === before) setUpdatingFrom(before);
+    // "Updating…" from the moment the store's screen closes, unless the change is already here. It stays until the change shows,
+    // then the page and "You're All Set!" change together.
+    const wait = () => { if (alive.current && stateNow.current === before) setUpdatingFrom(before); };
+    await sub.openManage(wait);
+    wait(); // app-payments-kit before 2.5.0 does not say when the screen closed
   });
   const updating = (
     <UpdatingBox
@@ -338,8 +344,8 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
       <>
         {heading(s.subscription)}
         {ending
-          ? bigButton(s.renewSubscription, until ? s.continuesAfter(planName, until) : '', c.accent, c.onAccent, manage)
-          : bigButton(s.cancelSubscription, until ? s.keepUntil(planName, until) : '', danger, onDanger, hasSheet ? () => setSheet(true) : manage)}
+          ? bigButton(s.renewSubscription, until ? s.continuesAfter(planName, keepTogether(until)) : '', c.accent, c.onAccent, manage)
+          : bigButton(s.cancelSubscription, until ? s.keepUntil(planName, keepTogether(until)) : '', danger, onDanger, hasSheet ? () => setSheet(true) : manage)}
         {ending ? lose : null}
         <View style={card}>
           {/* On the longest plan there is nothing to move up to, so Change Plan is left out instead of opening an empty choice. */}
