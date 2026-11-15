@@ -2,6 +2,13 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 1.19.0
+
+- **Premium page, when the store is slow:** if "Updating Your Subscription…" gets no answer within 20 seconds, it no longer just goes away. A calm line stays above the Subscription buttons: "Apple hasn't confirmed a change yet. This page will update the moment it does." (new string `notConfirmedYet(company)`).
+- When the answer comes later, the line goes and the page still shows "You're All Set!" or "Subscription Updated".
+- Leaving the page and opening it again keeps the line and asks the store again. The line goes by itself after 15 minutes (`UNCONFIRMED_MS`), so closing Apple's sheet with no change never leaves it there for good.
+- New `useSubscription().refresh()` and optional `PaymentsLike.refresh()`: app-payments-kit's `refresh` already fits. Nothing to change in apps.
+
 ## 1.18.2
 
 - **Plans screen, a tap is never ignored:** while subscribed, a plan that can't be picked (Monthly while on Yearly, where the app offers longer plans only) still answers a tap. The pick stays where it was and a line above the main button says why: "You're on Premium Yearly. Monthly isn't offered while it's active." New string `planNotOffered(plan, current, tier)`.

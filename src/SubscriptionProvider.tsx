@@ -67,6 +67,8 @@ export interface SubscriptionState {
   canRedeemCode: boolean;
   /** The store's manage screen. `onClosed` runs as soon as it closes (with app-payments-kit 2.5.0+), before the store is asked again. */
   openManage(onClosed?: () => void): Promise<void>;
+  /** Asks the store again for this account's subscription (the Premium page does when Apple hadn't confirmed a change yet). */
+  refresh(): Promise<void>;
   /** A subscriber discount by its store id; null when there is none (or the payments object can't sell one). */
   loadOffer(offerId: string): Promise<StoreOffer | null>;
   buyOffer(offer: StoreOffer): Promise<PurchaseResult>;
@@ -196,6 +198,7 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
       // Before purchases open, the box stays so the screen can say "not open yet"; once open, only where the provider takes codes.
       canRedeemCode: !payments.ready || payments.canRedeemCode !== false,
       openManage: async (onClosed) => { if (await grownUp()) await payments.openManage?.(onClosed); },
+      refresh: async () => { if (payments.ready) await payments.refresh?.(); },
       loadOffer: async (id) => (payments.ready && payments.loadOffer && id ? payments.loadOffer(id).catch(() => null) : null),
       buyOffer: async (offer) => ((await grownUp()) && payments.buyOffer ? settle(await payments.buyOffer(offer)) : CANCELLED),
       switchPlan: async (plan) => {
