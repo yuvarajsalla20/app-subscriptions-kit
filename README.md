@@ -1,226 +1,214 @@
 # app-subscriptions-kit
 
-The subscription pattern for React Native / Expo apps (iOS, Android, web): one config for tiers, features and limits, checks such as `canUse()` and `limit()`, a `useSubscription()` hook, and themeable screens that follow the App Store and Google Play rules.
+The subscription pattern for React Native and Expo apps (iOS, Android and web): one config for tiers, features and limits; checks such as `canUse()` and `limit()`; a `useSubscription()` hook; and themeable screens that follow the App Store and Google Play rules: the Plans screen, the Free vs paid table, a complete Premium page for Settings, lock badges and plan pills.
 
-It never talks to a store. Give it [app-payments-kit](https://github.com/yuvarajsalla20/app-payments-kit), or any object with the same few functions (`PaymentsLike` in `src/payments.ts`).
+**Current version: 1.18.0** (tag `v1.18.0`)
+
+It never talks to a store. Give it [app-payments-kit](https://github.com/yuvarajsalla20/app-payments-kit), or any object with the same few functions (`PaymentsLike` in `src/payments.ts`). For the full App Store Connect, RevenueCat and EAS setup, follow the Subscriptions and Payments Playbook in the app's `runbooks/` folder.
+
+Part of the shared kits:
+[app-core-kit](https://github.com/yuvarajsalla20/app-core-kit) ·
+[app-auth-kit](https://github.com/yuvarajsalla20/app-auth-kit) ·
+[app-account-kit](https://github.com/yuvarajsalla20/app-account-kit) ·
+[app-settings-kit](https://github.com/yuvarajsalla20/app-settings-kit) ·
+**app-subscriptions-kit** ·
+[app-payments-kit](https://github.com/yuvarajsalla20/app-payments-kit) ·
+[app-export-kit](https://github.com/yuvarajsalla20/app-export-kit)
+
+## Install
+
+```jsonc
+// package.json
+"dependencies": {
+  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v1.18.0>",
+  "app-payments-kit": "git+https://github.com/yuvarajsalla20/app-payments-kit.git#<full SHA of v2.5.0>"
+},
+"kitVersions": {
+  "app-subscriptions-kit": "v1.18.0",
+  "app-payments-kit": "v2.5.0"
+}
+```
+
+Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Find a SHA with `git ls-remote https://github.com/yuvarajsalla20/app-subscriptions-kit refs/tags/v1.18.0`.
+
+**Peer dependencies:** `react` ≥ 18, `react-native` ≥ 0.74, `react-native-svg` ≥ 13 (Expo apps install it with `npx expo install react-native-svg`).
+
+1.18.0 works best with app-payments-kit **2.5.0** or later (its `openManage(onClosed)` makes Renew and Cancel feel instant). Older payments kits still work.
 
 ## What you get
 
 | Piece | What it does |
 |---|---|
-| `defineSubscription({ tiers, features, limits, plans, compare, kids })` | The app's rules in one place. Checks them at start, so a typo fails loudly instead of unlocking something |
-| `<SubscriptionProvider config payments userId grownUpCheck>` | Follows the account's tier (store, server row, tester switch) and shares it with every screen |
-| `useSubscription()` | `tier`, `paid`, `canUse(f)`, `limit(n)`, `allowed(n, v)`, `isAtLeast(t)`, `buy`, `restore`, `redeemCode`, `openManage`, `tester` |
-| `usePremium()` / `useTier()` | Shortcuts: `{ premium }` for one-tier apps, or the tier name |
-| `<PlansScreen>` | Store prices, per-month price and savings, trial wording only when the store offers it, a tab per paid tier, restore, codes, manage, auto-renew wording, terms and privacy links |
-| `<CompareTable>` | Free vs paid tiers, one column per tier, extra rows highlighted |
-| `<PremiumGate>`, `<PremiumPill>`, `<LockBadge>` | A locked card in place of a feature, the gold pill and the lock badge |
-| `<SubscriptionRow>` | For a Settings screen (app-account-kit's App slot): tier, renew or end date, manage, code, restore, payment-problem note, developer tester switch |
+| `defineSubscription({ tiers, features, limits, plans, compare, kids })` | The app's rules in one place. Checked at start, so a typo fails loudly instead of unlocking something |
+| `<SubscriptionProvider>` | Follows the account's tier (store, server row, tester switch) and shares it with every screen |
+| `useSubscription()` | The full state and actions (see below) |
+| `usePremium()`, `useTier()` | Shortcuts: `{ premium, loading, source }` for one-tier apps, or the tier name |
+| `<PremiumPage>` | A complete Premium page for Settings: Get Premium, the features with locks or switches, Cancel with a Before You Go sheet, Renew, Change Plan, Restore, the welcome card and the updating box |
+| `<PlansScreen>` | Store prices, per-month price and savings, trial wording only when the store offers one, a tab per paid tier, Restore, codes, Manage, auto-renew wording, terms and privacy links |
+| `<CompareTable>` | Free vs paid tiers, one column per tier |
+| `<SubscriptionStatusCard>`, `statusLines()` | "You have Premium", the plan, and Renews or Ends |
+| `<SubscriptionRow>` | A compact Settings row: tier, renew or end date, Manage, code, Restore, and the developer tester switch |
+| `<PremiumGate>`, `<PremiumPill>`, `<LockBadge>`, `<PlanBadge>` | A locked card in place of a feature, the crowned tier pill, the lock badge, and a pill with the account's plan ("Monthly", "Yearly" or "Free") |
+| `planLabel()`, `usePlanLabel()` | The same plan word as text |
+| `<Crowns>`, `<Diamond>`, `<Swing>`, `<UpdatingBox>` | The art pieces, for an app's own layouts |
+| `canUse`, `limitFor`, `allowed`, `atLeast`, `rank`, `tierFor`, `tierAllowing` | The rules as pure functions |
+| `money`, `perMonth`, `savings`, `months`, `isPlan`, `shortDay` | Price and date helpers |
 
-## Use it
+## Quick start
 
 ```ts
-// subscription.ts  (one per app)
+// subscription.ts (one per app)
 import { defineSubscription } from 'app-subscriptions-kit';
 
 export const plan = defineSubscription({
-  tiers: ['free', 'premium'],                  // or ['free', 'plus', 'pro']
-  features: { practiceTest: 'premium', hardLevel: 'premium' },   // not listed = free
+  tiers: ['free', 'premium'],                    // or ['free', 'plus', 'pro']
+  features: { exportPdf: 'premium', themes: 'premium' },   // not listed = free
   limits: {
-    children: { free: 2, premium: 4 },         // a count
-    setSizes: { free: [5], premium: [5, 10, 20, 30] },   // or a list of allowed values
+    projects: { free: 3, premium: 50 },          // a count
+    sizes: { free: [5], premium: [5, 10, 20] },  // or a list of allowed values
   },
-  plans: [                                     // order and wording; prices come from the store
-    { id: 'yearly', tier: 'premium', label: 'Yearly', badge: 'Most popular' },
+  plans: [                                       // order and wording; prices come from the store
+    { id: 'yearly', tier: 'premium', label: 'Yearly', badge: 'Best Value' },
     { id: 'monthly', tier: 'premium', label: 'Monthly' },
   ],
   compare: [
-    { label: 'Full practice tests', values: { free: '–', premium: '✓' } },
-    { label: 'Children', values: { free: 'Up to 2', premium: 'Up to 4' } },
+    { label: 'PDF Export', values: { free: '–', premium: '✓' } },
+    { label: 'Projects', values: { free: 'Up to 3', premium: 'Up to 50' } },
   ],
-  kids: true,                                  // buy, restore and manage ask the grown-ups check first
+  kids: false,                                   // true: buy, restore and manage ask a grown-up check first
 });
 ```
 
 ```tsx
-// app/_layout.tsx
-<SubscriptionProvider config={plan} payments={payments} userId={user?.id ?? null} grownUpCheck={askGrownUp}>
-  <Stack />
+// App root
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+<SubscriptionProvider config={plan} payments={payments} userId={user?.uid ?? null} storage={AsyncStorage}>
+  <App />
 </SubscriptionProvider>
 
-// any screen
+// Any screen
 const { canUse, limit } = useSubscription();
-if (!canUse('practiceTest')) return <PremiumGate feature="practiceTest" name="Practice tests" onUnlock={() => router.push('/plans')} />;
+if (!canUse('exportPdf')) return <PremiumGate feature="exportPdf" name="PDF Export" onUnlock={openPlans} />;
 
-// app/plans.tsx
-<PlansScreen header={<Logo />} onClose={router.back} onOpenTerms={openTerms} onOpenPrivacy={openPrivacy} theme={{ accent: '#5B4BD6' }} />
+// Plans screen
+<PlansScreen header={<Logo />} onClose={goBack} onOpenTerms={openTerms} onOpenPrivacy={openPrivacy} />
 
-// settings
-<SubscriptionRow onOpenPlans={() => router.push('/plans')} />
+// Premium page inside Settings (app-settings-kit's `plan.content`)
+<PremiumPage
+  features={[
+    { key: 'themes', label: 'Themes', icon: <ThemeIcon />, toggle: { value: themesOn, onChange: setThemesOn } },
+    { key: 'exportPdf', label: 'PDF Export', onPress: openDataExport },
+  ]}
+  loseList={['PDF Export', 'Themes']}
+  stayOfferId="monthly_stay50"
+  onOpenPlans={openPlans}
+  onError={reportError}
+/>
 ```
 
-`grownUpCheck` is your own check (a times-table question, a PIN …): resolve `true` to go on.
+## `SubscriptionProvider` props
+
+| Prop | Notes |
+|---|---|
+| `config` | The result of `defineSubscription` |
+| `payments` | app-payments-kit, or any `PaymentsLike` |
+| `userId` | The signed-in account, or `null`. A change clears the last account's tier at once |
+| `storage` | Optional, such as AsyncStorage. Keeps a booked plan switch and the welcome card between launches |
+| `grownUpCheck` | Optional. Your own check (a sum, a PIN). Resolve `true` to go on. Used when `kids: true` |
+
+## `useSubscription()`
+
+| Field | What it is |
+|---|---|
+| `tier`, `tierLabel`, `paid`, `loading`, `ready`, `source` | The account's level and where it came from |
+| `server`, `renewal` | The server row, and the store's `{ until, willRenew, productId }` |
+| `canUse(feature)`, `limit(name)`, `allowed(name, value)`, `isAtLeast(tier)`, `tierFor(feature)` | Checks |
+| `loadPlans()`, `buy(plan)`, `restore()`, `switchPlan(plan)` | Store actions |
+| `redeemCode(code?)`, `canRedeemCode` | Offer codes (hidden on the web) |
+| `openManage(onClosed?)` | The store's manage sheet. `onClosed` runs when it closes |
+| `loadOffer(id)`, `buyOffer(offer)` | Promotional offers, such as a stay discount |
+| `pendingSwitch` | A booked switch to a longer plan: `{ planId, startsAt }` |
+| `justSubscribed`, `dismissWelcome()` | The Welcome to Premium card |
+| `grownUp()` | Runs the grown-up check |
+| `tester` | `{ available, tier, set(tier) }`: the development tester switch |
 
 ## Tiers, plans and limits
 
 - **Tiers** are levels of access, lowest first, starting with `free`. A higher tier includes everything below it.
-- **Plans** are ways to pay for a tier. Any number per tier. Their ids match the payments kit's plan ids.
+- **Plans** are ways to pay for a tier, any number per tier. Their ids match the payments kit's plan ids, and a store product id ending in the plan id (`myapp_yearly`) is read as that plan.
 - **Limits** take a value per tier. A tier with no value gets the value of the nearest tier below it.
 
-Keep the limits that matter on the server too (app-payments-kit's `has_tier()` in a database trigger): the phone's answer is for showing locks.
+Keep the limits that matter on the server too (app-payments-kit's `has_tier()` in a database trigger). The phone's answer is for showing locks.
 
-## Current plan and switching
+## `PremiumPage`
 
-Pass `currentPlanId` (the plan the account pays for) and the Plans screen marks it **Current plan** and draws that row in the Premium colours (`premiumSoft` fill, `premium` border and badge) so it stands apart from the picked plan, and the Free vs paid table puts a **CURRENT** badge over the account's tier. With `onSwitch`, the current plan can't be picked, the best other length (its `badge`, then `selected`, then the first) is picked to start with, and the button says **Switch to …**; the app decides what that does (explain when the change applies, then open the store's or the checkout's own page). Without `onSwitch`, or with `switchBlocked` (a sentence for a plan bought somewhere this device can't change, such as another store), the current plan stays picked, the others are locked, and the line under the button shows the current price.
+| Prop | Notes |
+|---|---|
+| `features` | `{ key, label, detail?, icon?, toggle?, children?, onPress? }[]`. With `toggle`, a paid account gets a switch. With `onPress`, an unlocked row opens the page where the feature lives |
+| `onOpenPlans` | Opens the Plans screen |
+| `onError` | Store failures, for crash reporting |
+| `icon` | The mark on the cards. Default `<Crowns>` |
+| `loseList` | What a person loses on cancel, shown in Before You Go and after a cancel |
+| `featuresOpen` | `{ free?, paid? }`: whether the features list starts open |
+| `stayOfferId` | A promotional offer id. Before You Go offers it to people on that plan |
+| `beforeCancel` | `false` skips the Before You Go sheet |
+| `updatingArt` | The art in the "Updating Your Subscription…" box. Wrap your own in `<Swing>` |
 
-Pass `canSwitchTo(from, to)` to narrow which plans a subscriber may switch to, for example longer plans only (`(a, b) => months(b)! > months(a)!`), so a yearly member is never invited to move to a shorter plan. When no plan is allowed, no switch is offered: the current plan stays picked and the button says **You have …**. Pass `currentMark` (any element, such as the app's Premium icon) to draw it next to the current plan's name.
+What it shows:
 
-Pass `onManage` to show your own sheet before the store's manage page (for example a simple "cancel" sheet that says what happens), and change `strings.manage` to match (for example "Turn renewal back on" after a cancel).
+- **Free:** a Get Premium card with store prices ("From $3.99/month", "Or $29.99/year"), See Plans, Restore Subscription and Have a Code?, then the features with a lock on each.
+- **Renewing:** the status card, the features, **Cancel Subscription** ("You keep Premium until …"), Change Plan (to a longer plan only, with its saving) and Restore Subscription.
+- **Before You Go:** what is lost, the stay offer when there is one, a switch to the longer plan, Keep Premium, and Continue to Cancel.
+- **After a cancel:** Ends and "Auto-renew is off", then **Renew Subscription** ("Keep Premium Monthly beyond Dec 12, 2026").
+- **After the store's sheet closes:** "Updating Your Subscription…" until the change shows, then "You're All Set!" or "Subscription Updated".
+- **Right after a first purchase:** a Welcome to Premium card.
+
+## `PlansScreen`
+
+| Prop | Notes |
+|---|---|
+| `onOpenTerms`, `onOpenPrivacy` | **Required.** The legal links Apple asks for |
+| `header`, `onClose` | The app's logo and Close, in one row |
+| `currentPlanId` | Marks the plan the account pays for as **Current Plan**, and puts **CURRENT** over its tier in the table |
+| `onSwitch(plan)` | Lets a subscriber switch plans. The app decides what that does |
+| `canSwitchTo(from, to)` | Narrows the switches, such as longer plans only: `(a, b) => months(b)! > months(a)!` |
+| `switchBlocked` | A sentence for a plan bought somewhere this device cannot change |
+| `currentMark` | An element drawn next to the current plan's name |
+| `onManage` | Your own sheet before the store's manage page |
+| `initialTier`, `onUnlocked(tier)` | The tab to open on, and a callback once a tier is bought |
+| `compareFirst`, `hideCompare` | Put the table on top, or leave it out |
+| `previewPlans` | Plans to show without a store, for design previews |
+
+Layout: logo and Close, the plans, the Free vs paid table, the main button, then Restore, Have a Code? and Manage on one line, then the legal line.
 
 ## On the website
 
-With app-payments-kit's RevenueCat web provider (`revenueCatWeb`), the same Plans screen sells on the website with card checkout. The website has no store codes, so "Have a code?" is hidden there (`payments.canRedeemCode` is false; any payments object can set it). Restore and Manage work the same.
+With app-payments-kit's RevenueCat web provider (`revenueCatWeb`), the same Plans screen sells on the website with card checkout. The website has no store codes, so Have a Code? is hidden (`payments.canRedeemCode` is false). Restore and Manage work the same, and the Premium page uses the web store's words, not "App Store".
 
-## Look and words
+## Theming and words
 
-Every screen takes `theme` (colors, radius), `strings` (every word, for rewording or translation) and `components` (`Text`, for your fonts). Pass only what differs. The default is the gold Premium look.
+Every screen takes three optional props. Pass only what differs:
 
-The Plans screen has the app's logo (`header`) and Close in one row, then the plans, then the Free vs paid table (`compareFirst` puts the table on top), then the main button, then Restore, Have a code? and Manage on one line, then the legal line. `theme.shadow` (a CSS box-shadow) makes cards float with no outline; `theme.button` / `theme.onButton` color the main button (the accent by default).
+- `theme`: `Partial<SubscriptionTheme>`. Colors and radius. The default (`DEFAULT_THEME`) is the gold Premium look. Notable values: `accent`, `button` and `onButton` (the main button), `premium`, `premiumSoft` and `premiumText` (current plan and pills), `king`, `kingFill`, `queen`, `queenFill` (the crowns), `success`, `info`, `danger` and their soft fills, `hud`, `onHud`, `hudAccent`, `confetti` (the updating box), and `shadow` (a CSS box-shadow that makes cards float with no outline).
+- `strings`: `Partial<SubscriptionStrings>`. Every word, for rewording or translation (`DEFAULT_STRINGS`). Store names come from `storeName`, `storeAccount` and `storeCompany(platform)`, so Android says Google Play.
+- `components`: `{ Text }`, for your fonts.
 
-## Versions
-
-Every release is tagged in git (`v1.13.0`). In the app's `package.json` pin the full commit SHA of that tag and write the tag in a comment.
-
-### 1.18.0
-
-- **Renew and Cancel feel instant:** "Updating Your Subscription…" shows the moment Apple's manage sheet closes (with app-payments-kit 2.5.0's `openManage(onClosed)`; with an older payments kit it shows after the first check, as before). It stays until what the person changed in the sheet shows (the tier, auto-renew, the plan or a booked switch), then the page and "You're All Set!" change together. A fresher end date alone no longer closes it early.
-- **Renew line fits one line:** `continuesAfter` is now "Keep Premium Monthly beyond Dec 12, 2026" (was "Turn auto-renew back on to keep … after …"). The date under Renew and Cancel never breaks across lines.
-- `useSubscription().openManage(onClosed?)` and the payments `openManage?(onClosed?)` take the new callback; both are optional, so nothing else changes.
-
-### 1.17.0
-
-- `<PremiumPill>` now has the approved look by default: the king and queen crowns and the tier name, gold on soft gold, the same as the paid plan pill. Pass `lock` for the older solid pill with a padlock. Apps can put it beside any paid feature's row (Data Export) instead of drawing their own.
-- Upgrading: every app's `PremiumPill` changes look. Pass `lock` to keep the old one.
-- A change of signed-in account clears the last account's tier, dates and welcome at once (until the new answer arrives, `loading` is true and the tier is free).
-- The Premium page's colors and store names come from the theme and strings: `success`, `successSoft`, `onTag`, `info`, `infoSoft`, `infoBadge`, `dangerSoft`, `dangerBadge`, and `storeName` / `storeAccount` / `storeCompany(platform)`. The website no longer says "App Store".
-- Continue to Cancel opens the store's sheet once Before You Go has closed (iPhone refused a sheet while another was closing).
-- Per-month prices never lose a cent to rounding (19.99 used to show 19.98).
-- The Plans screen's button and Restore link come back if the store call throws.
-
-### 1.16.0
-
-- **A feature row can open its own page:** `PremiumFeature.onPress`. Once unlocked, a tap on a row without a switch opens the page where the feature lives (Data Export, which sits in Account under Your Data), and the row shows an arrow after Included. Locked, the tap still opens the plans. New string `opensPage` (the VoiceOver hint).
-
-### 1.15.1
-
-- **No dead-end Change Plan:** on the longest plan (Yearly) the Premium page leaves out Change Plan, since the Plans screen only offers longer plans. A Yearly subscriber sees Cancel Subscription and Restore Subscription. A booked switch still shows in Change Plan. Moving down (Yearly to Monthly) stays with the store's own subscription settings.
-
-### 1.15.0
-
-- **A happy updating box:** after the store's manage screen closes, a dark box over the page says "Updating Your Subscription…" with "Apple is confirming your change. This page will update by itself." The art swings like a ringing bell (`updatingArt`, default the crowns; wrap your own in `<Swing>`), a ring pulses and three dots bounce. Once the change shows, the mark pops in and the box says what changed for about 2 seconds (`UPDATED_MS`): confetti and "You're All Set! Premium Monthly renews on …" when the plan now renews, a calm "Subscription Updated" after a cancel. A tap closes it. Motion stops when the phone asks for less motion (`useReduceMotion`). New strings `updatingBody`, `allSet`, `subscriptionUpdated`, `renewsOn`; new theme `hud`, `onHud`, `hudAccent`, `confetti`.
-- **`PlanBadge`:** a small pill with the account's level for a Settings row: the crowns and "Monthly" or "Yearly" in gold once paid, a gray "Free" otherwise. `planLabel` / `usePlanLabel` give the same word as text. New theme `premiumText` (the pill's words).
-
-### 1.14.0
-
-- **Every date has the year:** "Ends Thu, Nov 12, 2026, 10:07 PM", "Switching to Yearly on Nov 12, 2026", "Yearly Starts Nov 12, 2026", "What You Lose After Nov 12, 2026", the welcome card and the Plans screen (`shortDay` and the status card's date both include it).
-- **The plan is named** under Cancel Subscription ("You keep Premium Monthly until …") and in Before You Go. Under Renew Subscription the line now reads "Turn auto-renew back on to keep Premium Monthly after …", so it no longer seems to contradict "Ends …".
-- **"Updating Your Subscription…"** shows under the top card from the moment the store's manage screen closes until the account's state changes, or for 20 seconds if nothing changed. New string `updatingSubscription`.
-- **Compare table:** paid columns are tinted with a crown in the header; what a paid tier adds shows as a solid tick or a bold number pill; rows that are the same in every tier are quieter. `CompareRow.icon` puts an icon before the label. New string `feature` (first column heading).
-
-### 1.13.1
-
-Review fixes for the booked plan switch.
-- **It no longer gets stuck.** It also goes once the store has renewed past its start date on the old plan (the switch was undone in the store), and 40 days after booking when no start date was known.
-- It shows only while it can still happen: a paid account on that plan's tier that is still renewing. "Ends Dec 12" and "Switching to Yearly" never show together.
-- A sign-in change never shows or clears the last person's switch, and broken saved data is ignored instead of crashing.
-- Plans: with a switch booked, the plan in use stays the checked one, and the button's spoken name has no "✓".
-- `switchPlan` uses the same purchase path as `buy`.
-
-### 1.13.0
-
-- **A booked plan switch shows.** On the App Store a longer plan of the same level (Monthly to Yearly) starts at the next renewal. `sub.switchPlan(plan)` buys it and, when the store still shows the old plan, remembers it as `sub.pendingSwitch` (`{ planId, startsAt }`) until the store shows the new plan or stops renewing.
-  - Status card: "→ Switching to Yearly on Dec 12" under the plan.
-  - Premium page: Change Plan reads "Yearly Starts Dec 12"; Before You Go doesn't offer the switch again.
-  - Plans: the current plan says "Until Dec 12", the next one is tagged NEXT with "Yearly Starts Dec 12", one line explains it, and the button reads "✓ Yearly Starts Dec 12" (no second switch).
-- `SubscriptionProvider` takes `storage` (AsyncStorage fits) to keep it between launches.
-- New strings: `switchingTo`, `planStarts`, `nextPlan`, `untilDay`, `switchBooked`. `shortDay(iso)` is exported.
-
-### 1.12.0
-
-- The stay offer in Before You Go shows only to people on the plan it belongs to (a yearly subscriber is never offered a monthly discount that would move them down).
-- Change Plan names only a longer plan; on the longest plan it names none.
-- Cancel, Renew, Continue to Cancel and the stay offer run one at a time: a second quick tap does nothing. Restore's guard now holds for two taps in the same moment, and nothing updates after the page closes.
-- Restore results are read out by VoiceOver and TalkBack. The welcome card no longer hides Start Exploring from VoiceOver.
-- Plans: `onSwitch` may return the purchase result; a failed switch now says why.
-- `isPlan(productId, planId)` (exported) matches "monthly", "app_monthly", "com.app.monthly" and "sub:base", not "bimonthly". Used for the current plan and the status card.
-- Smaller: "What You Lose" without a date, the welcome card resets when someone else signs in.
-
-### 1.11.0
-
-- The default Premium mark is now **a king and a queen crown** (`<Crowns>`), drawn with SVG, on the top card, the welcome card and the status card; an outline version heads the Premium Features row. It replaces the rotated-square `<Diamond>` (still exported). Colors: `theme.king`, `kingFill`, `queen`, `queenFill`. `icon` still replaces it.
-- Needs `react-native-svg` (a new peer dependency; Expo apps have it).
-
-### 1.10.0
-
-- **Restore Subscription always answers.** The row dims while pressed, shows a spinner and "Checking With the App Store…" (a second tap is ignored), then says what happened for a few seconds (`RESTORE_NOTE_MS`, 4 s): "You're All Set. Premium Is Active on This Apple ID.", "Premium Restored.", or "No Purchases Found on This Apple ID.". A failure says "Couldn't Reach the App Store. Tap to Try Again." until tapped, and still calls `onError`. On Android the words say Google Play and Google Account.
-- Once paid, the hint under Restore is "Premium Missing on a Device? Tap to Check." instead of "Already paid on another device?".
-- New strings: `restoreHintPaid(tier)`, `restoreChecking(store)`, `restoreAllSet(tier, account)`, `restoreDone(tier)`, `restoreNone(account)`, `restoreFailed(store)`.
-
-### 1.9.0
-
-The Premium page's subscription actions, the same for every app. Only the features, words, colors and icon are the app's.
-
-- Free: **Get Premium** card with store prices ("From $3.99/month", "Or $29.99/year"), then **See Plans**, Restore Subscription and Have a Code?, then the features (open, a lock on each).
-- Renewing: the status card, the features (closed, tap to open), then a **Cancel Subscription** button ("You keep Premium until Dec 12"), Change Plan (the other plan's price and a "Save n%" tag worked out from store prices) and Restore Subscription.
-- **Before You Go**: Cancel opens a sheet first with what is lost (`loseList`), a subscriber discount when the store has `stayOfferId` (needs app-payments-kit 2.3.0 `loadOffer`/`buyOffer`), Switch to the longer plan with its saving, Keep Premium, and Continue to Cancel (always one tap). Skipped when there is nothing to show, or with `beforeCancel={false}`.
-- After a cancel: Ends and "Auto-renew is off", then a **Renew Subscription** button and what is lost, then the features.
-- Right after a first purchase on this phone, a **Welcome to Premium** card until Start Exploring (`useSubscription().justSubscribed` / `dismissWelcome()`).
-- New props: `icon` (default `<Diamond>`), `loseList`, `featuresOpen` ({ free, paid }), `stayOfferId`, `beforeCancel`. `SubscriptionStatusCard` takes `icon` too.
-- New theme colors `danger`, `onDanger`. New strings for every new word; `endsNote` is now "Auto-renew is off". `autoRenewOn` is no longer shown.
-- `useSubscription()` adds `loadOffer(id)`, `buyOffer(offer)`. `PaymentsLike` can add `loadOffer?`, `buyOffer?`.
-
-### 1.8.0
-
-A whole Premium page for Settings, and its status card. **Nothing changes for an app that does not use them.**
-
-- `<PremiumPage features onOpenPlans onError>`: the app lists its features (`{ key, label, detail?, icon?, toggle?, children? }`) and the kit draws them. Free: a lock on each, a tap opens the plans, then Upgrade, code and restore. Paid: the status card, each feature with its switch (when it has `toggle`) or "Included", then Manage, code and restore. After a cancel, Manage reads "Turn auto-renew back on". Development builds keep `SubscriptionRow` at the bottom for the tester switch.
-- `<SubscriptionStatusCard>`: "You have Premium", the plan (the plan whose `id` ends the store product id, so `hringnring_yearly` is "Yearly"), and "Renews …" or, after a cancel, "Ends …" with "Auto-renew is off. You keep it until then." A payment problem shows `graceNote`. Nothing for a free account.
-- `statusLines(...)`: the same words without drawing, for tests or an app's own layout.
-- New strings: `planName`, `endsNote`, `included`, `lockedHint`, `lockedLabel`, `autoRenewOn`.
-
-### 1.7.0
-
-Apps with no server row now see when Premium renews or ends. **Nothing to change in code; needs app-payments-kit 2.2.0 or later.**
-
-- `SubscriptionRow` shows **Renews <date>**, or **Ends <date>** after a cancel, from the store's `renewal` when there is no server row. A server row still wins when there is one.
-- `useSubscription().renewal` gives `{ until, willRenew, productId }` for screens of your own.
-
-### 1.6.0
-
-Prices are easier to read. **The wording changed for every app that upgrades; nothing to change in code.**
-
-- Each plan shows its price and period on one line, `$29.99/year`, instead of the price with "a year" under it. The new `strings.per(unit, count)` makes the `/year` part.
-- The per-month line under a longer plan reads `$2.50/month · save 50%` (was `$2.50 a month`).
-
-### 1.5.0
-
-The Plans screen is tighter. **The layout changed for every app that upgrades; nothing to change in code.**
-
-- The app's logo (`header`) and Close share the first row, with less padding above them. Before, Close had a row of its own above the logo.
-- Less space between the heading, the plans and the table.
-- The main button sits right under the plans and the table, inside the scroll, instead of being pinned to the bottom of the screen (so a message above it can no longer crowd it).
-- Restore purchases, Have a code? and Manage are on one line (they wrap on a narrow screen). The "Already subscribed?" box and its heading are gone; `strings.alreadySubscribed` is no longer shown but still accepted.
-- The legal line is centred.
-
-An app that draws the screen inside its own padded frame should drop the top padding it added for Close, or the space will show twice.
-
-### 1.4.1 and earlier
-
-See the git history.
+Motion stops when the phone asks for less motion (`useReduceMotion`).
 
 ## Testing
 
-`npm test` runs the rules, pricing and screen tests with a fake payments object. In an app, the payments kit's tester switch shows in `SubscriptionRow` in development builds, so every locked and unlocked screen can be tried on the web and in Expo Go.
+`npm test` runs the rules, pricing and screen tests with a fake payments object. In an app, the payments kit's tester switch shows in `SubscriptionRow` and at the bottom of `PremiumPage` in development builds, so every locked and unlocked screen can be tried in Expo Go and on the web.
+
+```bash
+npm install
+npm run typecheck
+npm test
+```
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
