@@ -84,7 +84,7 @@ describe('PlansScreen', () => {
     await payments.emit({ tier: 'premium' });
     expect(m.shown('Current plan')).toBe(true);
     expect(m.shown('CURRENT')).toBe(true);
-    expect(m.label('Monthly, $6.99, Current plan')!.props.disabled).toBe(true);
+    expect(m.label('Monthly, $6.99, Current plan')!.props.accessibilityState.disabled).toBe(true);
     // The badge plan is picked to start with, and the footer prices the plan being switched to.
     expect(m.shown('Switch to Yearly')).toBe(true);
     expect(m.shown('$39.99 a year. Cancel any time.')).toBe(true);
@@ -194,8 +194,35 @@ describe('PlansScreen', () => {
     // Yearly is the longest: nothing shorter is offered, the yearly row stays picked and the button says so.
     expect(m.shown('You have Premium')).toBe(true);
     expect(m.texts().some((t) => t.startsWith('Switch to'))).toBe(false);
-    expect(m.label('Monthly, $6.99')!.props.disabled).toBe(true);
+    expect(m.label('Monthly, $6.99')!.props.accessibilityState.disabled).toBe(true);
     expect(m.shown('MARK')).toBe(true);
+    // Tapping Monthly never moves the pick: Yearly stays, and the screen says why instead of looking ignored.
+    await press(m.label('Monthly, $6.99'));
+    expect(m.shown("You're on Premium Yearly. Monthly isn't offered while it's active.")).toBe(true);
+    expect(m.label('Yearly, $39.99, Current plan')!.props.accessibilityState.checked).toBe(true);
+    expect(m.label('Monthly, $6.99')!.props.accessibilityState.checked).toBe(false);
+  });
+
+  it('picks no plan for a subscriber whose plan the store has not named yet', async () => {
+    const payments = fakePayments();
+    const m = await mount(app(<PlansScreen {...legal} />, payments));
+    await payments.emit({ tier: 'premium' });
+    // Before 1.18.2 Yearly showed as picked here, so a Monthly member saw the wrong plan chosen.
+    expect(m.label('Yearly, $39.99')!.props.accessibilityState.checked).toBe(false);
+    expect(m.label('Monthly, $6.99')!.props.accessibilityState.checked).toBe(false);
+    await press(m.label('Monthly, $6.99'));
+    expect(m.shown('You already have Premium.')).toBe(true);
+    expect(m.label('Monthly, $6.99')!.props.accessibilityState.checked).toBe(false);
+  });
+
+  it('lets a free person pick Monthly, and buys Monthly', async () => {
+    const payments = fakePayments();
+    const m = await mount(app(<PlansScreen {...legal} />, payments));
+    await press(m.label('Monthly, $6.99'));
+    expect(m.label('Monthly, $6.99')!.props.accessibilityState.checked).toBe(true);
+    expect(m.label('Yearly, $39.99')!.props.accessibilityState.checked).toBe(false);
+    await press(m.label('Upgrade to Premium'));
+    expect(payments.buy).toHaveBeenCalledWith(expect.objectContaining({ id: 'monthly' }));
   });
 
   it('lets a monthly member switch only to a longer plan when the app asks for that', async () => {
@@ -204,7 +231,7 @@ describe('PlansScreen', () => {
     const m = await mount(app(<PlansScreen {...legal} currentPlanId="monthly" onSwitch={vi.fn()} canSwitchTo={longer} />, payments));
     await payments.emit({ tier: 'premium' });
     expect(m.shown('Switch to Yearly')).toBe(true);
-    expect(m.label('Yearly, $39.99')!.props.disabled).toBe(false);
+    expect(m.label('Yearly, $39.99')!.props.accessibilityState.disabled).toBe(false);
   });
 
   it('prices the footer by the current plan when switching is not offered', async () => {
@@ -231,7 +258,7 @@ describe('PlansScreen', () => {
     const m = await mount(app(<PlansScreen {...legal} currentPlanId="monthly" onSwitch={vi.fn()} switchBlocked="Change your plan where you bought it." />, payments));
     await payments.emit({ tier: 'premium' });
     expect(m.shown('Change your plan where you bought it.')).toBe(true);
-    expect(m.label('Yearly, $39.99')!.props.disabled).toBe(true);
+    expect(m.label('Yearly, $39.99')!.props.accessibilityState.disabled).toBe(true);
     expect(m.shown('Switch to Yearly')).toBe(false);
   });
 
