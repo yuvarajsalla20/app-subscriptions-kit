@@ -2,6 +2,10 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 1.18.1
+
+Nothing to change in apps: the kit's own tests now run on React 19.3.0 and React Native 0.88.1, the versions the apps ship (they ran on React 18.3 and React Native 0.76 before). Code is unchanged.
+
 ## 1.18.0
 
 - **Renew and Cancel feel instant:** "Updating Your Subscription…" shows the moment Apple's manage sheet closes (with app-payments-kit 2.5.0's `openManage(onClosed)`; with an older payments kit it shows after the first check, as before). It stays until what the person changed in the sheet shows (the tier, auto-renew, the plan or a booked switch), then the page and "You're All Set!" change together. A fresher end date alone no longer closes it early.
