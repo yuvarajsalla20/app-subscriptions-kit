@@ -31,4 +31,24 @@ describe('a new account never sees the last one', () => {
     await act(async () => m.root.update(ui('u2')));
     expect(seen).toEqual({ tier: 'free', renewal: null, loading: true });
   });
+
+  it('passes on that the subscription is in its free trial', async () => {
+    const payments = fakePayments({
+      watch: vi.fn((_id: string | null, f: (s: WatchState) => void) => {
+        f({ tier: 'premium', source: 'store', server: null, renewal: { until: '2030-01-01T00:00:00Z', willRenew: true, trial: true } });
+        return () => undefined;
+      }),
+    });
+    let trial: boolean | undefined;
+    function Probe() {
+      trial = useSubscription().renewal?.trial;
+      return null;
+    }
+    await mount(
+      <SubscriptionProvider config={config} payments={payments} userId="u1">
+        <Probe />
+      </SubscriptionProvider>,
+    );
+    expect(trial).toBe(true);
+  });
 });
