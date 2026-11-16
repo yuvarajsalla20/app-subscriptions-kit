@@ -27,6 +27,8 @@ export interface RenewalInfo {
   willRenew: boolean;
   /** The store product that gives the tier, such as 'hringnring_monthly'. */
   productId?: string | null;
+  /** True while the subscription is in its free trial (app-payments-kit 2.6.0+). Apps use it for trial-only limits. */
+  trial?: boolean;
 }
 
 export interface WatchState {

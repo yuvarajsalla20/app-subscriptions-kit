@@ -2,6 +2,11 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 1.20.0
+
+- **Free trial:** `RenewalInfo` gains `trial?: boolean`, true while the subscription is in its free trial. It comes from app-payments-kit 2.6.0+ and passes through `useSubscription().renewal` unchanged, so apps can apply trial-only limits (for example, PAL's 2-item trial).
+- Nothing to change in apps that don't need it.
+
 ## 1.19.0
 
 - **Premium page, when the store is slow:** if "Updating Your Subscription…" gets no answer within 20 seconds, it no longer just goes away. A calm line stays above the Subscription buttons: "Apple hasn't confirmed a change yet. This page will update the moment it does." (new string `notConfirmedYet(company)`).
