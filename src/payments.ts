@@ -39,6 +39,15 @@ export interface WatchState {
   renewal?: RenewalInfo | null;
 }
 
+const sameServer = (a: ServerInfo | null, b: ServerInfo | null) =>
+  a === b || (!!a && !!b && a.tier === b.tier && a.activeUntil === b.activeUntil && a.status === b.status && a.willRenew === b.willRenew);
+const sameRenewal = (a: RenewalInfo | null | undefined, b: RenewalInfo | null | undefined) =>
+  (a ?? null) === (b ?? null) || (!!a && !!b && a.until === b.until && a.willRenew === b.willRenew && (a.productId ?? null) === (b.productId ?? null) && !!a.trial === !!b.trial);
+
+/** True when two answers from the store say the same thing (the store repeats itself on every return to the app). */
+export const sameWatchState = (a: WatchState, b: WatchState): boolean =>
+  a.tier === b.tier && a.source === b.source && sameServer(a.server, b.server) && sameRenewal(a.renewal, b.renewal);
+
 /** A discount for people who already subscribe (app-payments-kit 2.3.0+), such as $1.99/month for 3 months. */
 export interface StoreOffer {
   id: string;

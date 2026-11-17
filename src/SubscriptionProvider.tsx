@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { LimitValue, SubscriptionConfig } from './define';
 import type { PaymentsLike, PurchaseResult, RenewalInfo, ServerInfo, StoreOffer, StorePlan, WatchState } from './payments';
+import { sameWatchState } from './payments';
 import { isPlan } from './pricing';
 import { allowed, atLeast, canUse, limitFor, rank, tierFor } from './rules';
 
@@ -151,7 +152,8 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
     setState({ tier: 'free', source: 'free', server: null });
     setJustSubscribed(false);
     const stop = payments.watch(userId, (s) => {
-      setState(s);
+      // The same answer again (each return to the app asks twice or more) keeps the old object: no app-wide redraw.
+      setState((prev) => (sameWatchState(prev, s) ? prev : s));
       setLoading(false);
     });
     return stop;

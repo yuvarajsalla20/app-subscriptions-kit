@@ -2,6 +2,11 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 1.21.0
+
+- **Fewer redraws:** `SubscriptionProvider` keeps its state when the store repeats the same answer (each return to the app asks two or more times), so screens that read `useSubscription()` no longer redraw for nothing. New `sameWatchState(a, b)` export.
+- Nothing to change in apps.
+
 ## 1.20.0
 
 - **Free trial:** `RenewalInfo` gains `trial?: boolean`, true while the subscription is in its free trial. It comes from app-payments-kit 2.6.0+ and passes through `useSubscription().renewal` unchanged, so apps can apply trial-only limits (for example, PAL's 2-item trial).

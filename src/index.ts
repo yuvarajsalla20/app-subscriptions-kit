@@ -14,3 +14,4 @@ export { DEFAULT_STRINGS, DEFAULT_THEME, type StorePlatform, type SubscriptionCo
 export { Crowns, Diamond } from './look';
 export type { LookProps } from './look';
 export type { PaymentsLike, PurchaseResult, RenewalInfo, ServerInfo, StoreOffer, StorePlan, WatchState } from './payments';
+export { sameWatchState } from './payments';
