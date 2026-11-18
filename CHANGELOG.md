@@ -2,6 +2,11 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 1.22.0
+
+- **Premium page, optional quiet mode:** new `quietAfterStore` prop (default `false`). When on, closing the store's subscription screen shows no "Updating Your Subscription…" loader and no "hasn't confirmed a change yet" line, which mostly showed a spinner for nothing when the person closed the screen without changing anything. The page still listens for 15 minutes, and a late change still ends with "You're All Set!" or "Subscription Updated".
+- Nothing to change in apps: without the prop the page works exactly as before.
+
 ## 1.21.0
 
 - **Fewer redraws:** `SubscriptionProvider` keeps its state when the store repeats the same answer (each return to the app asks two or more times), so screens that read `useSubscription()` no longer redraw for nothing. New `sameWatchState(a, b)` export.
