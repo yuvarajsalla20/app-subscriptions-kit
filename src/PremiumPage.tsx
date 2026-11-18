@@ -48,6 +48,12 @@ export interface PremiumPageProps extends LookProps {
   beforeCancel?: boolean;
   /** What swings in the box while a change is confirmed (wrap your own art in `<Swing>`). Default: the crowns, swinging. */
   updatingArt?: ReactNode;
+  /**
+   * Quiet after the store's own screen closes (default false). No "Updating Your Subscription…" loader and no "hasn't confirmed"
+   * line: the page just stays as it is. It still listens quietly for 15 minutes, and if the store then shows a change, the page
+   * updates and says "You're All Set!" or "Subscription Updated" as usual. Fits apps where closing the sheet with no change is common.
+   */
+  quietAfterStore?: boolean;
 }
 
 
@@ -82,7 +88,7 @@ const stillUnconfirmed = () => {
   return unconfirmedFrom;
 };
 
-export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, featuresOpen, stayOfferId, beforeCancel = true, updatingArt, ...look }: PremiumPageProps) {
+export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, featuresOpen, stayOfferId, beforeCancel = true, updatingArt, quietAfterStore = false, ...look }: PremiumPageProps) {
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
   const { paid, config } = sub;
@@ -315,7 +321,19 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
     const before = stateNow.current;
     // "Updating…" from the moment the store's screen closes, unless the change is already here. It stays until the change shows,
     // then the page and "You're All Set!" change together.
-    const wait = () => { if (alive.current && stateNow.current === before) { unconfirmedFrom = null; setWaitingFrom(null); setUpdatingFrom(before); } };
+    const wait = () => {
+      if (!alive.current || stateNow.current !== before) return;
+      if (quietAfterStore) {
+        // Listen without showing anything: a later change still ends with the usual confirmation.
+        unconfirmedFrom = before;
+        unconfirmedAt = Date.now();
+        setWaitingFrom(before);
+        return;
+      }
+      unconfirmedFrom = null;
+      setWaitingFrom(null);
+      setUpdatingFrom(before);
+    };
     await sub.openManage(wait);
     wait(); // app-payments-kit before 2.5.0 does not say when the screen closed
   });
@@ -388,7 +406,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
     actions = (
       <>
         {heading(s.subscription)}
-        {waitingFrom !== null ? (
+        {waitingFrom !== null && !quietAfterStore ? (
           <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: c.radius, backgroundColor: infoSoft }}>
             <ActivityIndicator size="small" color={info} />
             <Text style={{ flex: 1, color: c.text, fontSize: 14, lineHeight: 20 }}>{s.notConfirmedYet(s.storeCompany(platform))}</Text>

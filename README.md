@@ -154,6 +154,7 @@ Keep the limits that matter on the server too (app-payments-kit's `has_tier()` i
 | `stayOfferId` | A promotional offer id. Before You Go offers it to people on that plan |
 | `beforeCancel` | `false` skips the Before You Go sheet |
 | `updatingArt` | The art in the "Updating Your Subscription…" box. Wrap your own in `<Swing>` |
+| `quietAfterStore` | `true`: after Apple's or Google's subscription screen closes, no loader and no "hasn't confirmed" line. A change the store shows later is still confirmed. Default `false` |
 
 What it shows:
 
