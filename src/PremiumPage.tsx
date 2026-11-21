@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Modal, Platform, Pressable, Switch, View } from 'react-native';
-import { Crowns, Lock, useLook, type LookProps } from './look';
+import { Crowns, useLook, type LookProps } from './look';
 import { UpdatingBox, type UpdatingDone } from './Updating';
 import type { StoreOffer, StorePlan } from './payments';
 import { isPlan, months, money, offerSaving, savings } from './pricing';
@@ -15,7 +15,7 @@ export interface PremiumFeature {
   /** Unique within the page. */
   key: string;
   label: string;
-  /** A short line under the label, such as "7 extra sounds". Without one, a locked row shows `strings.lockedHint`. */
+  /** A short line under the label, such as "7 Additional Sounds". */
   detail?: string;
   /** The app's icon (any element, such as a tinted tile). */
   icon?: ReactNode;
@@ -40,7 +40,7 @@ export interface PremiumPageProps extends LookProps {
   icon?: ReactNode;
   /** What stops working when the paid tier ends, one short line each. Shown after a cancel and in Before You Go. */
   loseList?: readonly string[];
-  /** Whether the features list starts open. Default: open for a free account, closed once paid. */
+  /** @deprecated 3.0.0: ignored. The page no longer lists the features (app-settings-kit's comparison does); Premium Settings is always open. */
   featuresOpen?: { free?: boolean; paid?: boolean };
   /** A store discount for subscribers (an App Store promotional offer id), offered in Before You Go when the store has it. */
   stayOfferId?: string;
@@ -64,9 +64,10 @@ type RestoreState = 'idle' | 'checking' | 'allSet' | 'done' | 'none' | 'failed';
 
 /**
  * A whole Premium page for Settings, the same for every app: only the features, words, colors and icon are the app's.
- * Free: Get Premium, then See Plans, Restore and Have a Code?, then the features (open) with locks. Paid: the status
- * card, the features (closed), then Cancel Subscription (with Before You Go first), Change Plan (not on the longest plan) and Restore. After a
- * cancel: Ends, then Renew Subscription and what is lost, then the features. Right after a purchase: a welcome card.
+ * Free: Get Premium, then See Plans, Restore Purchases and Redeem a Code. Paid: the status card, Premium Settings (the
+ * features with their own controls), then Cancel Subscription (with Before You Go first), Change Plan (not on the longest
+ * plan) and Restore Purchases. After a cancel: Ends, then Renew Subscription and what is lost, then Premium Settings. Right
+ * after a purchase: a welcome card. 3.0.0: the Free and Premium comparison follows this page, drawn by app-settings-kit.
  */
 /** A date that never breaks across two lines ("Nov 15, 2026", not "Nov 15," then "2026"). */
 const keepTogether = (date: string) => date.replace(/ /g, '\u00A0');
@@ -88,7 +89,7 @@ const stillUnconfirmed = () => {
   return unconfirmedFrom;
 };
 
-export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, featuresOpen, stayOfferId, beforeCancel = true, updatingArt, quietAfterStore = false, ...look }: PremiumPageProps) {
+export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, stayOfferId, beforeCancel = true, updatingArt, quietAfterStore = false, ...look }: PremiumPageProps) {
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
   const { paid, config } = sub;
@@ -110,7 +111,6 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
 
   const [plans, setPlans] = useState<StorePlan[]>([]);
   const [offer, setOffer] = useState<StoreOffer | null>(null);
-  const [open, setOpen] = useState<boolean | null>(null);
   const [sheet, setSheet] = useState(false);
   const [restoring, setRestoring] = useState<RestoreState>('idle');
   // After the store's manage screen closes: "Updating Your Subscription…" until what the person changed there shows (or 20 seconds).
@@ -225,7 +225,6 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
     const t = setTimeout(() => setUpdated(null), UPDATED_MS);
     return () => clearTimeout(t);
   }, [updated]);
-  const isOpen = open ?? (paid ? featuresOpen?.paid ?? false : featuresOpen?.free ?? true);
 
   const card = { backgroundColor: c.surface, borderColor: c.border, borderWidth: 1, borderRadius: c.radius, overflow: 'hidden' as const };
   const line = { borderTopWidth: 1, borderTopColor: c.border };
@@ -440,56 +439,47 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
     );
   }
 
-  // ---- Features ----
-  const list = (
-    <View style={card}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: isOpen }} onPress={() => setOpen(!isOpen)}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingVertical: 8, paddingHorizontal: 16 }}>
-        {mark(22, true)}
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: c.text, fontSize: 16, fontWeight: '700' }}>{s.premiumFeatures(tierLabel)}</Text>
-          <Text style={{ color: c.muted, fontSize: 13, marginTop: 2 }}>{isOpen ? s.featureCount(features.length) : `${s.featureCount(features.length)} · ${s.tapToSee}`}</Text>
-        </View>
-        <Text style={{ color: c.muted, fontSize: 16 }}>{isOpen ? '▴' : '▾'}</Text>
-      </Pressable>
-      {isOpen
-        ? features.map((f) => {
-            const on = paid && (!f.toggle || f.toggle.value);
-            const press = !paid ? onOpenPlans : f.toggle ? () => f.toggle!.onChange(!f.toggle!.value) : f.onPress;
-            return (
-              <View key={f.key} style={line}>
-                <Pressable
-                  onPress={press}
-                  disabled={!press}
-                  accessibilityRole={paid && f.toggle ? 'switch' : 'button'}
-                  accessibilityLabel={paid ? f.label : `${f.label}, ${s.lockedLabel}`}
-                  accessibilityHint={paid && !f.toggle && f.onPress ? s.opensPage : undefined}
-                  accessibilityState={paid && f.toggle ? { checked: f.toggle.value } : undefined}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16, minHeight: 56 }}
-                >
-                  {f.icon ?? null}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: c.text, fontSize: 16, fontWeight: '600' }}>{f.label}</Text>
-                    {f.detail || !paid ? <Text style={{ color: c.muted, fontSize: 12, marginTop: 2 }}>{f.detail ?? s.lockedHint}</Text> : null}
-                  </View>
-                  {!paid ? (
-                    <Lock color={c.premium} size={18} />
-                  ) : f.toggle ? (
-                    <Switch value={f.toggle.value} onValueChange={f.toggle.onChange} trackColor={{ true: c.accent, false: c.border }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
-                  ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={{ color: c.accent, fontSize: 13, fontWeight: '700' }}>{`✓ ${s.included}`}</Text>
-                      {f.onPress ? <Text style={{ color: c.muted, fontSize: 20, lineHeight: 22 }} accessibilityElementsHidden importantForAccessibility="no">›</Text> : null}
-                    </View>
-                  )}
-                </Pressable>
-                {on && f.children ? <View style={{ paddingHorizontal: 16, paddingBottom: 14 }}>{f.children}</View> : null}
-              </View>
-            );
-          })
-        : null}
-    </View>
-  );
+  // ---- Premium Settings ----
+  // 3.0.0: the plan page in app-settings-kit (10.0.0) ends with its Free and Premium comparison, so this page no longer
+  // repeats the feature list. A subscriber sees only the features that have their own controls (a switch, an editor, a
+  // page to open), under Premium Settings; a free account sees none here.
+  const settable = paid ? features.filter((f) => f.toggle || f.children || f.onPress) : [];
+  const list = settable.length ? (
+    <>
+      {heading(s.premiumSettings(tierLabel))}
+      <View style={card}>
+        {settable.map((f, i) => {
+          const on = !f.toggle || f.toggle.value;
+          const press = f.toggle ? () => f.toggle!.onChange(!f.toggle!.value) : f.onPress;
+          return (
+            <View key={f.key} style={i ? line : undefined}>
+              <Pressable
+                onPress={press}
+                disabled={!press}
+                accessibilityRole={f.toggle ? 'switch' : 'button'}
+                accessibilityLabel={f.label}
+                accessibilityHint={!f.toggle && f.onPress ? s.opensPage : undefined}
+                accessibilityState={f.toggle ? { checked: f.toggle.value } : undefined}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16, minHeight: 56 }}
+              >
+                {f.icon ?? null}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: c.text, fontSize: 16, fontWeight: '600' }}>{f.label}</Text>
+                  {f.detail ? <Text style={{ color: c.muted, fontSize: 12, marginTop: 2 }}>{f.detail}</Text> : null}
+                </View>
+                {f.toggle ? (
+                  <Switch value={f.toggle.value} onValueChange={f.toggle.onChange} trackColor={{ true: c.accent, false: c.border }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+                ) : f.onPress ? (
+                  <Text style={{ color: c.muted, fontSize: 20, lineHeight: 22 }} accessibilityElementsHidden importantForAccessibility="no">›</Text>
+                ) : null}
+              </Pressable>
+              {on && f.children ? <View style={{ paddingHorizontal: 16, paddingBottom: 14 }}>{f.children}</View> : null}
+            </View>
+          );
+        })}
+      </View>
+    </>
+  ) : null;
 
   // Free and after a cancel the Subscription section leads; a renewing subscriber sees the features first.
   const subscriptionFirst = !paid || ending;

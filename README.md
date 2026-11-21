@@ -2,7 +2,7 @@
 
 The subscription pattern for React Native and Expo apps (iOS, Android and web): one config for tiers, features and limits; checks such as `canUse()` and `limit()`; a `useSubscription()` hook; and themeable screens that follow the App Store and Google Play rules: the Plans screen, the Free vs paid table, a complete Premium page for Settings, lock badges and plan pills.
 
-**Current version: 2.1.0** (tag `v2.1.0`)
+**Current version: 3.0.0** (tag `v3.0.0`)
 
 It never talks to a store. Give it [app-payments-kit](https://github.com/yuvarajsalla20/app-payments-kit), or any object with the same few functions (`PaymentsLike` in `src/payments.ts`). For the full App Store Connect, RevenueCat and EAS setup, follow the Subscriptions and Payments Playbook in the app's `runbooks/` folder.
 
@@ -26,16 +26,16 @@ Tools that work alongside them: [code-review-kit](https://github.com/yuvarajsall
 ```jsonc
 // package.json
 "dependencies": {
-  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v2.1.0>",
+  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v3.0.0>",
   "app-payments-kit": "git+https://github.com/yuvarajsalla20/app-payments-kit.git#<full SHA of v2.8.0>"
 },
 "kitVersions": {
-  "app-subscriptions-kit": "v2.1.0",
+  "app-subscriptions-kit": "v3.0.0",
   "app-payments-kit": "v2.8.0"
 }
 ```
 
-Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Find a SHA with `git ls-remote https://github.com/yuvarajsalla20/app-subscriptions-kit refs/tags/v2.1.0`.
+Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Find a SHA with `git ls-remote https://github.com/yuvarajsalla20/app-subscriptions-kit refs/tags/v3.0.0`.
 
 **Peer dependencies:** `react` ≥ 18, `react-native` ≥ 0.74, `react-native-svg` ≥ 13 (Expo apps install it with `npx expo install react-native-svg`).
 
@@ -49,7 +49,7 @@ Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Fi
 | `<SubscriptionProvider>` | Follows the account's tier (store, server row, tester switch) and shares it with every screen |
 | `useSubscription()` | The full state and actions (see below) |
 | `usePremium()`, `useTier()` | Shortcuts: `{ premium, loading, source }` for one-tier apps, or the tier name |
-| `<PremiumPage>` | A complete Premium page for Settings: Get Premium, the features with locks or switches, Cancel with a Before You Go sheet, Renew, Change Plan, Restore, the welcome card and the updating box |
+| `<PremiumPage>` | A complete Premium page for Settings: Get Premium, Premium Settings (the features with switches or editors, once paid), Cancel with a Before You Go sheet, Renew, Change Plan, Restore, the welcome card and the updating box |
 | `<PlansScreen>` | Store prices, per-month price and savings, trial wording only when the store offers one, a tab per paid tier, Restore, codes, Manage, auto-renew wording, terms and privacy links |
 | `<CompareTable>` | Free vs paid tiers, one column per tier |
 | `<SubscriptionStatusCard>`, `statusLines()` | "You have Premium", the plan, and Renews or Ends |
@@ -151,12 +151,12 @@ Keep the limits that matter on the server too (app-payments-kit's `has_tier()` i
 
 | Prop | Notes |
 |---|---|
-| `features` | `{ key, label, detail?, icon?, toggle?, children?, onPress? }[]`. With `toggle`, a paid account gets a switch. With `onPress`, an unlocked row opens the page where the feature lives |
+| `features` | `{ key, label, detail?, icon?, toggle?, children?, onPress? }[]`. 3.0.0: only the features with `toggle`, `children` or `onPress` show, to a paid account, under **Premium Settings**. The full list of what Premium adds is app-settings-kit's Free and Premium comparison (10.0.0), which follows this page |
 | `onOpenPlans` | Opens the Plans screen |
 | `onError` | Store failures, for crash reporting |
 | `icon` | The mark on the cards. Default `<Crowns>` |
 | `loseList` | What a person loses on cancel, shown in Before You Go and after a cancel |
-| `featuresOpen` | `{ free?, paid? }`: whether the features list starts open |
+| `featuresOpen` | Deprecated in 3.0.0 and ignored |
 | `stayOfferId` | A promotional offer id. Before You Go offers it to people on that plan |
 | `beforeCancel` | `false` skips the Before You Go sheet |
 | `updatingArt` | The art in the "Updating Your Subscription…" box. Wrap your own in `<Swing>` |
@@ -164,8 +164,8 @@ Keep the limits that matter on the server too (app-payments-kit's `has_tier()` i
 
 What it shows:
 
-- **Free:** a Get Premium card with store prices ("From $3.99/month", "Or $29.99/year"), See Plans, Restore Subscription and Have a Code?, then the features with a lock on each.
-- **Renewing:** the status card, the features, **Cancel Subscription** ("You keep Premium until …"), Change Plan (to a longer plan only, with its saving) and Restore Subscription.
+- **Free:** a Get Premium card with store prices ("From $3.99/month", "Or $29.99/year"), See Plans, Restore Purchases and Redeem a Code.
+- **Renewing:** the status card, Premium Settings, **Cancel Subscription** ("You keep Premium until …"), Change Plan (to a longer plan only, with its saving) and Restore Purchases.
 - **Before You Go:** what is lost, the stay offer when there is one, a switch to the longer plan, Keep Premium, and Continue to Cancel.
 - **After a cancel:** Ends and "Auto-renew is off", then **Renew Subscription** ("Keep Premium Monthly beyond Dec 12, 2026").
 - **After the store's sheet closes:** "Updating Your Subscription…" until the change shows, then "You're All Set!" or "Subscription Updated".
@@ -187,11 +187,11 @@ What it shows:
 | `compareFirst`, `hideCompare` | Put the table on top, or leave it out |
 | `previewPlans` | Plans to show without a store, for design previews |
 
-Layout: logo and Close, the plans, the Free vs paid table, the main button, then Restore, Have a Code? and Manage on one line, then the legal line.
+Layout: logo and Close, the plans, the Free vs paid table, the main button, then Restore, Redeem a Code and Manage on one line, then the legal line.
 
 ## On the website
 
-With app-payments-kit's RevenueCat web provider (`revenueCatWeb`), the same Plans screen sells on the website with card checkout. The website has no store codes, so Have a Code? is hidden (`payments.canRedeemCode` is false). Restore and Manage work the same, and the Premium page uses the web store's words, not "App Store".
+With app-payments-kit's RevenueCat web provider (`revenueCatWeb`), the same Plans screen sells on the website with card checkout. The website has no store codes, so Redeem a Code is hidden (`payments.canRedeemCode` is false). Restore and Manage work the same, and the Premium page uses the web store's words, not "App Store".
 
 ## Theming and words
 

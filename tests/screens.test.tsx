@@ -40,10 +40,10 @@ describe('PlansScreen layout', () => {
     expect(up(up(logo))).toBe(up(close));
   });
 
-  it('keeps Restore purchases and Have a code? on one line, with no Already subscribed box', async () => {
+  it('keeps Restore Purchases and Redeem a Code on one line, with no Already subscribed box', async () => {
     const m = await mount(app(<PlansScreen {...legal} />));
     expect(m.shown('Already Subscribed?')).toBe(false);
-    expect(sameRow(m.button('Restore Purchases'), m.button('Have a Code?'))).toBe(true);
+    expect(sameRow(m.button('Restore Purchases'), m.button('Redeem a Code'))).toBe(true);
   });
 
   it('puts the main button after the plans and table, inside the scroll, not pinned below it', async () => {
@@ -315,11 +315,11 @@ describe('PlansScreen', () => {
   it('on iPhone opens the store code sheet; elsewhere asks for the code', async () => {
     const payments = fakePayments();
     const m = await mount(app(<PlansScreen {...legal} />, payments));
-    await press(m.button('Have a Code?'));
+    await press(m.button('Redeem a Code'));
     expect(payments.redeemCode).toHaveBeenCalledWith('');
     Platform.OS = 'android';
     const a = await mount(app(<PlansScreen {...legal} />, fakePayments()));
-    await press(a.button('Have a Code?'));
+    await press(a.button('Redeem a Code'));
     expect(a.label('Enter Code')).toBeDefined();
     Platform.OS = 'ios';
   });
