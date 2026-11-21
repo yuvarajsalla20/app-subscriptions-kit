@@ -396,6 +396,18 @@ describe('PremiumPage', () => {
     expect(m.shown(DEFAULT_STRINGS.restoreAllSet('Premium', 'Apple ID'))).toBe(true);
   });
 
+  it('2.1.0: names the store that bills the subscription, not the phone it is on', async () => {
+    let finish: (r: { ok: true; tier: string }) => void = () => undefined;
+    const payments = fakePayments({ restore: vi.fn(() => new Promise((r) => { finish = r; })) });
+    const m = await mount(page(payments));
+    await act(async () => payments.emit({ ...renewing, renewal: { ...renewing.renewal, billedBy: 'google_play' as const } }));
+    const tap = m.button(DEFAULT_STRINGS.restoreSubscription)!;
+    await act(async () => { void tap.props.onPress(); });
+    expect(m.shown(DEFAULT_STRINGS.restoreChecking('Google Play'))).toBe(true);
+    await act(async () => finish({ ok: true, tier: 'premium' }));
+    expect(m.shown(DEFAULT_STRINGS.restoreAllSet('Premium', 'Google Account'))).toBe(true);
+  });
+
   it('Restore on a free account: restored, nothing found, or failed', async () => {
     const restore = vi.fn()
       .mockResolvedValueOnce({ ok: true, tier: 'free' })

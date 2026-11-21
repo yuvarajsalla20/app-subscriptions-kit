@@ -33,6 +33,11 @@ export interface RenewalInfo {
   trial?: boolean;
   /** The store couldn't take the renewal payment (app-payments-kit 2.7.0+): the screens ask the person to update it. */
   billingIssue?: boolean;
+  /**
+   * Which store bills it (app-payments-kit 2.9.0+): 'app_store', 'google_play', 'web' or 'other'. The Premium page names that
+   * store, so an iPhone subscription seen on Android says App Store and Apple ID, not Google Play.
+   */
+  billedBy?: 'app_store' | 'google_play' | 'web' | 'other';
 }
 
 export interface WatchState {
@@ -48,7 +53,7 @@ export interface WatchState {
 const sameServer = (a: ServerInfo | null, b: ServerInfo | null) =>
   a === b || (!!a && !!b && a.tier === b.tier && a.activeUntil === b.activeUntil && a.status === b.status && a.willRenew === b.willRenew);
 const sameRenewal = (a: RenewalInfo | null | undefined, b: RenewalInfo | null | undefined) =>
-  (a ?? null) === (b ?? null) || (!!a && !!b && a.until === b.until && a.willRenew === b.willRenew && (a.productId ?? null) === (b.productId ?? null) && !!a.trial === !!b.trial && !!a.billingIssue === !!b.billingIssue);
+  (a ?? null) === (b ?? null) || (!!a && !!b && a.until === b.until && a.willRenew === b.willRenew && (a.productId ?? null) === (b.productId ?? null) && !!a.trial === !!b.trial && !!a.billingIssue === !!b.billingIssue && (a.billedBy ?? null) === (b.billedBy ?? null));
 
 /** True when two answers from the store say the same thing (the store repeats itself on every return to the app). */
 export const sameWatchState = (a: WatchState, b: WatchState): boolean =>

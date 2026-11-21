@@ -253,7 +253,10 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   );
 
   // ---- Restore Subscription: always tappable, and it always answers ----
-  const platform: StorePlatform = Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'web';
+  // 2.1.0: the store that bills the subscription, when the store says (an iPhone subscription seen on Android names the App Store).
+  const billedBy = sub.renewal?.billedBy;
+  const platform: StorePlatform =
+    billedBy === 'app_store' ? 'ios' : billedBy === 'google_play' ? 'android' : billedBy === 'web' ? 'web' : Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'web';
   const store = s.storeName(platform);
   const account = s.storeAccount(platform);
   const restore = async () => {
