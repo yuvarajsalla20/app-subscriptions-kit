@@ -1,7 +1,11 @@
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, Switch, View } from 'react-native';
 import { PremiumPill } from './badges';
 import { useLook, type LookProps } from './look';
+import { rank } from './rules';
+import { subscriptionTerms } from './status';
 import { useSubscription } from './SubscriptionProvider';
+import type { PurchaseResult } from './payments';
 
 /** Formats a date for the Renews / Ends line. */
 const day = (iso: string) => {
@@ -20,9 +24,36 @@ export function SubscriptionRow({ onOpenPlans, ...look }: LookProps & { onOpenPl
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
   const { config, server, renewal } = sub;
-  // The server row when the app has one, else the store's own date (an app with no backend).
-  const until = server?.activeUntil ?? renewal?.until ?? null;
-  const ends = server ? server.willRenew === false : renewal?.willRenew === false;
+  // The same rule as the status card: the server row only while it gives the tier, else the store; no date already past.
+  const terms = subscriptionTerms({ server, renewal, source: sub.source });
+  const until = terms.until;
+  const ends = terms.ending;
+  // What Restore, Have a Code? or Manage came back with, shown under the card like the Plans screen does.
+  const [note, setNote] = useState<{ text: string; good: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const alive = useRef(true);
+  useEffect(() => () => { alive.current = false; }, []);
+  const say = (n: { text: string; good: boolean } | null) => { if (alive.current) setNote(n); };
+  const restore = async () => {
+    if (busy) return;
+    if (!sub.ready) return say({ text: s.notOpenYet, good: false });
+    setBusy(true);
+    say(null);
+    try {
+      const r: PurchaseResult = await sub.restore();
+      if (r.ok) say(rank(config, r.tier) > 0 ? { text: s.restored(config.tierLabels[r.tier] ?? r.tier), good: true } : { text: s.nothingToRestore, good: false });
+      else if (!r.cancelled) say({ text: r.message, good: false });
+    } catch {
+      say({ text: s.pricesFailed, good: false });
+    } finally {
+      if (alive.current) setBusy(false);
+    }
+  };
+  /** Manage and Have a Code? only open the store's own screen; a failure to open it still says so. */
+  const open = (job: () => Promise<void>) => () => {
+    say(null);
+    job().catch(() => say({ text: s.pricesFailed, good: false }));
+  };
   const row = (label: string, right: string, onPress?: () => void) => (
     <Pressable key={label} accessibilityRole={onPress ? 'button' : undefined} disabled={!onPress} onPress={onPress}
       style={{ flexDirection: 'row', alignItems: 'center', minHeight: 44, borderTopWidth: 1, borderTopColor: c.border }}>
@@ -41,15 +72,20 @@ export function SubscriptionRow({ onOpenPlans, ...look }: LookProps & { onOpenPl
           <>
             {row(s.plan, sub.tierLabel)}
             {until ? row(ends ? s.ends : s.renews, day(until)) : null}
-            {row(s.manage, '›', () => void sub.openManage())}
+            {row(s.manage, '›', open(() => sub.openManage()))}
           </>
         ) : (
           row(s.upgrade(config.tierLabels[config.tiers[1]!]!), '›', onOpenPlans)
         )}
-        {sub.canRedeemCode && row(s.haveCode, '›', () => void sub.redeemCode(''))}
-        {row(s.restore, '›', () => void sub.restore())}
+        {sub.canRedeemCode && row(s.haveCode, '›', open(() => sub.redeemCode('')))}
+        {row(s.restore, busy ? s.restoring : '›', () => void restore())}
       </View>
-      {server?.status === 'grace' && (
+      {note ? (
+        <View accessibilityLiveRegion="polite" style={{ backgroundColor: note.good ? c.good : c.warn, borderRadius: c.radius, padding: 12 }}>
+          <Text style={{ color: c.text, fontSize: 14 }}>{note.text}</Text>
+        </View>
+      ) : null}
+      {terms.billingIssue && (
         <View accessibilityLiveRegion="polite" style={{ backgroundColor: c.warn, borderRadius: c.radius, padding: 12 }}>
           <Text style={{ color: c.text, fontSize: 14 }}>{s.graceNote}</Text>
         </View>

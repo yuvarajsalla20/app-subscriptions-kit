@@ -3,8 +3,8 @@ import { AccessibilityInfo, ActivityIndicator, Modal, Platform, Pressable, Switc
 import { Crowns, Lock, useLook, type LookProps } from './look';
 import { UpdatingBox, type UpdatingDone } from './Updating';
 import type { StoreOffer, StorePlan } from './payments';
-import { isPlan, months, money, savings } from './pricing';
-import { shortDay } from './status';
+import { isPlan, months, money, offerSaving, savings } from './pricing';
+import { shortDay, subscriptionTerms } from './status';
 import { SubscriptionStatusCard } from './StatusCard';
 import { useSubscription } from './SubscriptionProvider';
 import { DEFAULT_THEME, type StorePlatform } from './theme';
@@ -92,8 +92,10 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
   const { paid, config } = sub;
-  const ending = sub.server ? sub.server.willRenew === false : sub.renewal?.willRenew === false;
-  const until = shortDay(sub.server?.activeUntil ?? sub.renewal?.until);
+  // The server row only while it gives the tier, else the store; a date already past is left out (as on the status card).
+  const terms = subscriptionTerms({ server: sub.server, renewal: sub.renewal, source: sub.source });
+  const ending = terms.ending;
+  const until = shortDay(terms.until);
   const fail = (e: unknown) => onError?.(e);
   const danger = c.danger ?? DEFAULT_THEME.danger!;
   const onDanger = c.onDanger ?? DEFAULT_THEME.onDanger!;
@@ -350,8 +352,9 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
   );
   const savePct = other ? savings(other, plans) : 0;
   // The stay offer belongs to one plan: offered only to people on that plan, never as a move to another one.
-  const stay = offer && mine && offer.plan.id === mine.id ? offer : null;
-  const offerPct = stay && stay.plan.price > 0 ? Math.round(100 - (100 * stay.price) / stay.plan.price) : 0;
+  // Offered only when it really costs less a month than the plan (a pay-up-front offer covers several months at once).
+  const stay = offer && mine && offer.plan.id === mine.id && offerSaving(offer) > 0 ? offer : null;
+  const offerPct = stay ? offerSaving(stay) : 0;
   const switchTo = !next && longest && mine && longest !== mine && savings(longest, plans) > 0 ? longest : null;
   const hasSheet = beforeCancel && (!!lose || !!stay || !!switchTo);
 
@@ -406,6 +409,11 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
     actions = (
       <>
         {heading(s.subscription)}
+        {terms.billingIssue ? (
+          <View accessibilityLiveRegion="polite" style={{ padding: 12, borderRadius: c.radius, backgroundColor: c.warn }}>
+            <Text style={{ color: c.text, fontSize: 14, lineHeight: 20 }}>{s.graceNote}</Text>
+          </View>
+        ) : null}
         {waitingFrom !== null && !quietAfterStore ? (
           <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: c.radius, backgroundColor: infoSoft }}>
             <ActivityIndicator size="small" color={info} />

@@ -2,7 +2,7 @@
 
 The subscription pattern for React Native and Expo apps (iOS, Android and web): one config for tiers, features and limits; checks such as `canUse()` and `limit()`; a `useSubscription()` hook; and themeable screens that follow the App Store and Google Play rules: the Plans screen, the Free vs paid table, a complete Premium page for Settings, lock badges and plan pills.
 
-**Current version: 1.18.1** (tag `v1.18.1`)
+**Current version: 1.23.0** (tag `v1.23.0`)
 
 It never talks to a store. Give it [app-payments-kit](https://github.com/yuvarajsalla20/app-payments-kit), or any object with the same few functions (`PaymentsLike` in `src/payments.ts`). For the full App Store Connect, RevenueCat and EAS setup, follow the Subscriptions and Payments Playbook in the app's `runbooks/` folder.
 
@@ -20,20 +20,20 @@ Part of the shared kits:
 ```jsonc
 // package.json
 "dependencies": {
-  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v1.18.1>",
-  "app-payments-kit": "git+https://github.com/yuvarajsalla20/app-payments-kit.git#<full SHA of v2.5.0>"
+  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v1.23.0>",
+  "app-payments-kit": "git+https://github.com/yuvarajsalla20/app-payments-kit.git#<full SHA of v2.7.0>"
 },
 "kitVersions": {
-  "app-subscriptions-kit": "v1.18.1",
-  "app-payments-kit": "v2.5.0"
+  "app-subscriptions-kit": "v1.23.0",
+  "app-payments-kit": "v2.7.0"
 }
 ```
 
-Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Find a SHA with `git ls-remote https://github.com/yuvarajsalla20/app-subscriptions-kit refs/tags/v1.18.1`.
+Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Find a SHA with `git ls-remote https://github.com/yuvarajsalla20/app-subscriptions-kit refs/tags/v1.23.0`.
 
 **Peer dependencies:** `react` ≥ 18, `react-native` ≥ 0.74, `react-native-svg` ≥ 13 (Expo apps install it with `npx expo install react-native-svg`).
 
-1.18.0 works best with app-payments-kit **2.5.0** or later (its `openManage(onClosed)` makes Renew and Cancel feel instant). Older payments kits still work.
+1.23.0 works best with app-payments-kit **2.7.0** or later (payment problems from the store, trial lengths in months, the last known tier offline). Older payments kits still work; those parts then simply don't show.
 
 ## What you get
 
@@ -83,7 +83,7 @@ export const plan = defineSubscription({
 // App root
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-<SubscriptionProvider config={plan} payments={payments} userId={user?.uid ?? null} storage={AsyncStorage}>
+<SubscriptionProvider config={plan} payments={payments} userId={auth.loading ? undefined : user?.uid ?? null} storage={AsyncStorage}>
   <App />
 </SubscriptionProvider>
 
@@ -113,7 +113,7 @@ if (!canUse('exportPdf')) return <PremiumGate feature="exportPdf" name="PDF Expo
 |---|---|
 | `config` | The result of `defineSubscription` |
 | `payments` | app-payments-kit, or any `PaymentsLike` |
-| `userId` | The signed-in account, or `null`. A change clears the last account's tier at once |
+| `userId` | The signed-in account, or `null` once signed out. `undefined` while the app still restores the session: the store is not asked and `loading` stays true. A change clears the last account's tier at once |
 | `storage` | Optional, such as AsyncStorage. Keeps a booked plan switch and the welcome card between launches |
 | `grownUpCheck` | Optional. Your own check (a sum, a PIN). Resolve `true` to go on. Used when `kids: true` |
 
