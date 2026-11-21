@@ -41,7 +41,7 @@ export function LockBadge({ size = 36, ...look }: LookProps & { size?: number })
 
 /**
  * Shows its children when the account can use `feature`; otherwise a locked card that opens the plans.
- * In a kids' app the button says "Ask a grown-up".
+ * In a kids' app the button says "Ask a Parent or Guardian".
  */
 export function PremiumGate({ feature, name, onUnlock, children, ...look }: LookProps & { feature: string; name: string; onUnlock: () => void; children?: ReactNode }) {
   const { c, s, Text } = useLook(look);

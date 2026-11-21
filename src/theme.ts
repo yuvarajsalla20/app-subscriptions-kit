@@ -102,7 +102,7 @@ export interface SubscriptionStrings {
   title: string;
   choosePlan: string;
   startTrial: (days: number) => string;
-  /** The button for a trial of months or years (1.23.0): "Start 1-month free trial". Day and week trials use `startTrial`. */
+  /** The button for a trial of months or years (1.23.0): "Start 1-Month Free Trial". Day and week trials use `startTrial`. */
   startTrialPeriod: (unit: 'MONTH' | 'YEAR', count: number) => string;
   upgrade: (tierLabel: string) => string;
   switchTo: (tierLabel: string) => string;
@@ -160,7 +160,7 @@ export interface SubscriptionStrings {
   developerOnly: string;
   free: string;
   graceNote: string;
-  /** The plan line on the status card: "Monthly plan". */
+  /** The plan line on the status card: "Monthly Plan". */
   planName: (planLabel: string) => string;
   /** Under the Ends date on the status card. */
   endsNote: string;
@@ -178,17 +178,17 @@ export interface SubscriptionStrings {
   getPremium: (tierLabel: string) => string;
   /** "From $3.99/month". */
   fromPrice: (price: string) => string;
-  /** "Or $29.99/year. Cancel anytime." */
+  /** "Or $29.99/year. Cancel any time." */
   orPrice: (price: string) => string;
   /** Under Get Premium when prices can't be shown. */
   getPremiumNote: string;
   /** "$3.99/month or $29.99/year" under See Plans. */
   priceChoice: (a: string, b: string) => string;
   cancelSubscription: string;
-  /** Under Cancel Subscription: "You keep Premium Monthly until Dec 12, 2026". `tierLabel` includes the plan when known. */
+  /** Under Cancel Subscription: "You keep Premium Monthly until Dec 12, 2026.". `tierLabel` includes the plan when known. */
   keepUntil: (tierLabel: string, date: string) => string;
   renewSubscription: string;
-  /** Under Renew Subscription, short enough for one line: "Keep Premium Monthly beyond Dec 12, 2026". `tierLabel` includes the plan when known. The date never breaks. */
+  /** Under Renew Subscription, short enough for one line: "Keep Premium Monthly Beyond Dec 12, 2026". `tierLabel` includes the plan when known. The date never breaks. */
   continuesAfter: (tierLabel: string, date: string) => string;
   changePlan: string;
   /** Under Change Plan: "Yearly · $29.99/year". */
@@ -196,7 +196,7 @@ export interface SubscriptionStrings {
   restoreSubscription: string;
   /** Under Restore Subscription on a free account. */
   restoreHint: string;
-  /** Under Restore Subscription once paid: "Premium Missing on a Device? Tap to Check." */
+  /** Under Restore Subscription once paid: "Premium missing on this device? Tap to check." */
   restoreHintPaid: (tierLabel: string) => string;
   /** While the store is checked. `store` is "App Store" or "Google Play". */
   /** Under the top card from the moment the store's manage screen closes until the change shows (up to 20 seconds). */
@@ -251,7 +251,7 @@ export interface SubscriptionStrings {
   offerTag: string;
   /** "Switch to Yearly". */
   switchToPlan: (planLabel: string) => string;
-  /** "$29.99/year, about $2.49 a month". */
+  /** "$29.99 a year, about $2.49 a month." (2.0.0: the price comes with `every`, not "/year"). */
   aboutPerMonth: (priceWithPer: string, monthly: string) => string;
   keepPremium: (tierLabel: string) => string;
   continueToCancel: string;
@@ -262,117 +262,118 @@ export interface SubscriptionStrings {
 }
 
 const UNIT = { DAY: 'day', WEEK: 'week', MONTH: 'month', YEAR: 'year' } as const;
+const TITLE_UNIT = { DAY: 'Day', WEEK: 'Week', MONTH: 'Month', YEAR: 'Year' } as const;
 
 export const DEFAULT_STRINGS: SubscriptionStrings = {
   title: 'Upgrade',
-  choosePlan: 'Choose a plan',
-  startTrial: (d) => `Start ${d}-day free trial`,
-  startTrialPeriod: (u, n) => `Start ${n}-${UNIT[u]} free trial`,
+  choosePlan: 'Choose a Plan',
+  startTrial: (d) => `Start ${d}-Day Free Trial`,
+  startTrialPeriod: (u, n) => `Start ${n}-${TITLE_UNIT[u]} Free Trial`,
   upgrade: (t) => `Upgrade to ${t}`,
   switchTo: (t) => `Switch to ${t}`,
   switchPlan: (p) => `Switch to ${p}`,
-  currentPlan: 'Current plan',
-  planNotOffered: (p, cur, t) => (cur ? `You're on ${t} ${cur}. ${p} isn't offered while it's active.` : `You already have ${t}.`),
+  currentPlan: 'Current Plan',
+  planNotOffered: (p, cur, t) => (cur ? `You are on ${t} ${cur}. ${p} is not available while this plan is active.` : `You already have ${t}.`),
   current: 'Current',
   feature: 'Feature',
-  alreadySubscribed: 'Already subscribed?',
-  compareTitle: 'Compare plans',
-  youHave: (t) => `You have ${t}`,
+  alreadySubscribed: 'Already Subscribed?',
+  compareTitle: 'Compare Plans',
+  youHave: (t) => `You Have ${t}`,
   thenPrice: (p, every, trial) => `${trial ? `Free for ${trial} days, then ` : ''}${p} ${every}. Cancel any time.`,
   thenPriceAfterPeriod: (p, every, u, n) => `Free for ${n} ${UNIT[u]}${n === 1 ? '' : 's'}, then ${p} ${every}. Cancel any time.`,
   every: (u, n) => (n === 1 ? `a ${UNIT[u]}` : `every ${n} ${UNIT[u]}s`),
   perMonth: (p) => `${p}/month`,
   per: (u, n) => (n === 1 ? `/${UNIT[u]}` : `/${n} ${UNIT[u]}s`),
-  save: (n) => `save ${n}%`,
-  restore: 'Restore purchases',
-  restoring: 'Checking…',
-  haveCode: 'Have a code?',
-  enterCode: 'Enter code',
+  save: (n) => `Save ${n}%`,
+  restore: 'Restore Purchases',
+  restoring: 'Checking Your Purchases…',
+  haveCode: 'Have a Code?',
+  enterCode: 'Enter Code',
   apply: 'Apply',
-  manage: 'Manage or cancel subscription',
-  terms: 'Terms of use',
-  privacy: 'Privacy policy',
+  manage: 'Manage or Cancel Subscription',
+  terms: 'Terms of Use',
+  privacy: 'Privacy Policy',
   legal: (trial) =>
     `Payment is charged to your store account. The subscription renews automatically unless turned off at least 24 hours before the end of the period, in your store account settings. ${trial ? 'The free trial becomes a paid subscription at its end unless cancelled. ' : ''}`,
   loadingPrices: 'Getting prices from the store…',
-  pricesFailed: 'Could not reach the store. Check the connection.',
-  tryAgain: 'Try again',
+  pricesFailed: 'Could not reach the store. Check your connection and try again.',
+  tryAgain: 'Try Again',
   notOpenYet: 'Purchases open when the app is in the store.',
-  welcome: (t) => `Welcome to ${t}! Everything is unlocked.`,
+  welcome: (t) => `Welcome to ${t}. Every feature is now available.`,
   restored: (t) => `${t} is back on this device.`,
   nothingToRestore: 'No purchase was found for this store account.',
-  boughtNotActive: 'The purchase went through, but it is not active yet. Tap Restore purchases in a minute.',
-  locked: (f, t) => `${f} is in ${t}`,
-  lockedBody: 'Upgrade to unlock it.',
-  unlock: 'See plans',
-  askGrownUp: 'Ask a grown-up',
+  boughtNotActive: 'The purchase went through, but it is not active yet. Tap Restore Purchases in a minute.',
+  locked: (f, t) => `${f} is part of ${t}.`,
+  lockedBody: 'Upgrade to Premium to use this feature.',
+  unlock: 'See Plans',
+  askGrownUp: 'Ask a Parent or Guardian',
   close: 'Close',
   subscription: 'Subscription',
   plan: 'Plan',
   renews: 'Renews',
   ends: 'Ends',
-  pretend: 'Pretend to have',
+  pretend: 'Pretend to Have',
   pretendNote: 'Development builds only. Changes this phone, never the server.',
-  developerOnly: 'Developer only',
+  developerOnly: 'Developer Only',
   free: 'Free',
   graceNote: 'There is a problem with your payment. Update it in your store account to keep your plan.',
-  planName: (p) => `${p} plan`,
-  endsNote: 'Auto-renew is off',
+  planName: (p) => `${p} Plan`,
+  endsNote: 'Auto-renew is off.',
   included: 'Included',
-  opensPage: 'Opens its page',
-  lockedHint: 'Upgrade to unlock',
-  lockedLabel: 'locked. Opens the plans',
-  autoRenewOn: 'Turn auto-renew back on',
+  opensPage: 'Opens its page.',
+  lockedHint: 'Upgrade to Premium',
+  lockedLabel: 'locked. Opens the plans.',
+  autoRenewOn: 'Turn Auto-Renew Back On',
   getPremium: (t) => `Get ${t}`,
   fromPrice: (p) => `From ${p}`,
-  orPrice: (p) => `Or ${p}. Cancel anytime.`,
-  getPremiumNote: 'Unlock every feature.',
+  orPrice: (p) => `Or ${p}. Cancel any time.`,
+  getPremiumNote: 'Includes every feature.',
   priceChoice: (a, b) => `${a} or ${b}`,
   cancelSubscription: 'Cancel Subscription',
-  keepUntil: (t, d) => `You keep ${t} until ${d}`,
+  keepUntil: (t, d) => `You keep ${t} until ${d}.`,
   renewSubscription: 'Renew Subscription',
-  continuesAfter: (t, d) => `Keep ${t} beyond ${d}`,
+  continuesAfter: (t, d) => `Keep ${t} Beyond ${d}`,
   changePlan: 'Change Plan',
   planLine: (p, price) => `${p} · ${price}`,
   restoreSubscription: 'Restore Subscription',
-  restoreHint: 'Already paid on another device?',
-  restoreHintPaid: (tier) => `${tier} Missing on a Device? Tap to Check.`,
+  restoreHint: 'Already Subscribed on Another Device?',
+  restoreHintPaid: (tier) => `${tier} missing on this device? Tap to check.`,
   updatingSubscription: 'Updating Your Subscription…',
   storeName: (p) => (p === 'ios' ? 'App Store' : p === 'android' ? 'Google Play' : 'Store'),
   storeAccount: (p) => (p === 'ios' ? 'Apple ID' : p === 'android' ? 'Google Account' : 'Account'),
   storeCompany: (p) => (p === 'ios' ? 'Apple' : p === 'android' ? 'Google' : 'The store'),
   updatingBody: (company) => `${company} is confirming your change. This page will update by itself.`,
-  allSet: "You're All Set!",
+  allSet: 'You Are All Set',
   subscriptionUpdated: 'Subscription Updated',
-  notConfirmedYet: (company) => `${company} hasn't confirmed a change yet. This page will update the moment it does.`,
+  notConfirmedYet: (company) => `${company} has not confirmed a change yet. This page will update the moment it does.`,
   renewsOn: (t, d) => `${t} renews on ${d}`,
-  restoreChecking: (store) => `Checking With the ${store}…`,
-  restoreAllSet: (tier, account) => `You're All Set. ${tier} Is Active on This ${account}.`,
-  restoreDone: (tier) => `${tier} Restored.`,
-  restoreNone: (account) => `No Purchases Found on This ${account}.`,
-  restoreFailed: (store) => `Couldn't Reach the ${store}. Tap to Try Again.`,
+  restoreChecking: (store) => `Checking with the ${store}…`,
+  restoreAllSet: (tier, account) => `${tier} is active on this ${account}.`,
+  restoreDone: (tier) => `${tier} was restored.`,
+  restoreNone: (account) => `No purchases were found on this ${account}.`,
+  restoreFailed: (store) => `Could not reach the ${store}. Tap to try again.`,
   switchingTo: (plan, date) => (date ? `Switching to ${plan} on ${date}` : `Switching to ${plan} at Renewal`),
   planStarts: (plan, date) => (date ? `${plan} Starts ${date}` : `${plan} Starts at Renewal`),
-  nextPlan: 'NEXT',
+  nextPlan: 'Next',
   untilDay: (date) => `Until ${date}`,
   switchBooked: (next, current, date) =>
     `Your switch to ${next} is booked. ${current} stays${date ? ` until ${date}` : ' until it renews'}, then ${next} begins. Nothing is charged until then.`,
   saveTag: (n) => `Save ${n}%`,
   premiumFeatures: (t) => `${t} Features`,
-  featureCount: (n) => (n === 1 ? '1 feature' : `${n} features`),
-  tapToSee: 'Tap to see them',
+  featureCount: (n) => (n === 1 ? '1 Feature' : `${n} Features`),
+  tapToSee: 'Tap to View',
   whatYouLose: (d) => (d ? `What You Lose After ${d}` : 'What You Lose'),
   beforeYouGo: 'Before You Go',
   keepEitherWay: (t, d) => `You keep ${t} until ${d} either way.`,
-  insteadYouCould: 'Instead, You Could',
+  insteadYouCould: 'Other Options',
   stayOffer: (n) => `Stay for ${n}% Off`,
   offerLine: (p, n, u) => `${p} for ${n} ${UNIT[u]}${n === 1 ? '' : 's'}`,
   offerTag: 'Offer',
   switchToPlan: (p) => `Switch to ${p}`,
-  aboutPerMonth: (p, m) => `${p}, about ${m} a month`,
+  aboutPerMonth: (p, m) => `${p}, about ${m} a month.`,
   keepPremium: (t) => `Keep ${t}`,
   continueToCancel: 'Continue to Cancel',
   welcomeTitle: (t) => `Welcome to ${t}`,
-  welcomeBody: 'Everything is unlocked.',
+  welcomeBody: 'Every Premium feature is now available.',
   startExploring: 'Start Exploring',
 };

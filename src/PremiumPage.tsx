@@ -529,7 +529,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, fe
           ) : null}
           {switchTo ? (
             <View style={card}>
-              {row(s.switchToPlan(labelOf(switchTo)), s.aboutPerMonth(per(switchTo), money(switchTo.price / (months(switchTo) ?? 1), switchTo.currency)),
+              {row(s.switchToPlan(labelOf(switchTo)), s.aboutPerMonth(switchTo.period ? `${switchTo.priceString} ${s.every(switchTo.period.unit, switchTo.period.count)}` : switchTo.priceString, money(switchTo.price / (months(switchTo) ?? 1), switchTo.currency)),
                 () => { close(); onOpenPlans(); }, tag(s.saveTag(savings(switchTo, plans)), success), true)}
             </View>
           ) : null}
