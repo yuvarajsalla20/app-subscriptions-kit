@@ -19,12 +19,12 @@ describe('statusLines', () => {
 
   it('names the plan from the store product and says when it renews', () => {
     const l = statusLines({ ...base, renewal: { until: later, willRenew: true, productId: 'app_monthly' } });
-    expect(l).toEqual({ title: 'You have Premium', plan: 'Monthly plan', when: 'Renews Nov 12, 11:35 PM', ending: false, note: '' });
+    expect(l).toEqual({ title: 'You Have Premium', plan: 'Monthly Plan', when: 'Renews Nov 12, 11:35 PM', ending: false, note: '' });
   });
 
   it('says when it ends once auto-renew is off', () => {
     const l = statusLines({ ...base, renewal: { until: later, willRenew: false, productId: 'app_yearly' } });
-    expect(l).toMatchObject({ plan: 'Yearly plan', when: 'Ends Nov 12, 11:35 PM', ending: true, note: DEFAULT_STRINGS.endsNote });
+    expect(l).toMatchObject({ plan: 'Yearly Plan', when: 'Ends Nov 12, 11:35 PM', ending: true, note: DEFAULT_STRINGS.endsNote });
   });
 
   it('leaves out an unknown or past date, and puts a payment problem first', () => {
@@ -52,7 +52,7 @@ describe('PremiumPage', () => {
   it('free: Get Premium with store prices, See Plans first, features open with locks', async () => {
     const onOpenPlans = vi.fn();
     const m = await mount(page(fakePayments(), onOpenPlans));
-    expect(m.shown('You have Premium')).toBe(false);
+    expect(m.shown('You Have Premium')).toBe(false);
     expect(m.shown('Get Premium')).toBe(true);
     expect(m.shown('From $6.99/month')).toBe(true);
     expect(m.shown('$6.99/month or $39.99/year')).toBe(true);
@@ -68,8 +68,8 @@ describe('PremiumPage', () => {
     const onChange = vi.fn();
     const m = await mount(page(payments, vi.fn(), onChange));
     await act(async () => payments.emit(renewing));
-    expect(m.shown('You have Premium')).toBe(true);
-    expect(m.shown('Monthly plan')).toBe(true);
+    expect(m.shown('You Have Premium')).toBe(true);
+    expect(m.shown('Monthly Plan')).toBe(true);
     expect(m.texts().some((t) => t.startsWith('Renews '))).toBe(true);
     expect(m.shown('Background Effects')).toBe(false);
     await press(m.button('Premium Features'));
@@ -112,9 +112,9 @@ describe('PremiumPage', () => {
     const payments = fakePayments();
     const m = await mount(page(payments));
     await act(async () => payments.emit(renewing));
-    expect(m.shown('You keep Premium Monthly until Jan\u00A015,\u00A02099')).toBe(true);
+    expect(m.shown('You keep Premium Monthly until Jan\u00A015,\u00A02099.')).toBe(true);
     await act(async () => payments.emit(ended));
-    expect(m.shown('Keep Premium Monthly beyond Jan\u00A015,\u00A02099')).toBe(true);
+    expect(m.shown('Keep Premium Monthly Beyond Jan\u00A015,\u00A02099')).toBe(true);
     expect(m.texts().some((t) => t.startsWith('What You Lose After') && t.includes('2099'))).toBe(false); // no lose list passed
   });
 
@@ -145,7 +145,7 @@ describe('PremiumPage', () => {
       await press(m.button(DEFAULT_STRINGS.cancelSubscription));
       await act(async () => payments.emit(ended));
       expect(m.shown(DEFAULT_STRINGS.subscriptionUpdated)).toBe(true);
-      expect(m.shown('You keep Premium Monthly until Jan 15, 2099')).toBe(true);
+      expect(m.shown('You keep Premium Monthly until Jan 15, 2099.')).toBe(true);
       expect(m.shown(DEFAULT_STRINGS.allSet)).toBe(false);
     } finally {
       vi.useRealTimers();
@@ -303,6 +303,9 @@ describe('PremiumPage', () => {
     expect(m.shown('Stay for 50% Off')).toBe(true);
     expect(m.shown('$3.49/month for 3 months')).toBe(true);
     expect(m.shown('Switch to Yearly')).toBe(true);
+    // 2.0.0: a calm sentence, the price with words rather than "/year".
+    expect(m.texts().some((x) => /^\$39\.99 a year, about \$3\.33 a month\.$/.test(x))).toBe(true);
+    expect(m.shown('Other Options')).toBe(true);
     await press(m.button('Stay for 50% Off'));
     expect(payments.buyOffer).toHaveBeenCalledWith(offer);
     await press(m.button(DEFAULT_STRINGS.cancelSubscription));
@@ -426,6 +429,6 @@ describe('PremiumPage', () => {
     expect(m.shown('Welcome to Premium')).toBe(true);
     await press(m.button(DEFAULT_STRINGS.startExploring));
     expect(m.shown('Welcome to Premium')).toBe(false);
-    expect(m.shown('You have Premium')).toBe(true);
+    expect(m.shown('You Have Premium')).toBe(true);
   });
 });

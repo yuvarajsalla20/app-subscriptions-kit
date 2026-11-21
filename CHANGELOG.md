@@ -2,6 +2,19 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 2.0.0
+
+The default words on the Plans screen, the Premium page, the status card, the gate and the Settings row now follow the Writing rule: Title Case for titles, buttons and labels, and full calm sentences with periods for every line. Nothing else changes, but the words people see do, so this is a major version.
+
+- **Titles and buttons:** "Choose a Plan", "Start 7-Day Free Trial" (and "Start 1-Month Free Trial"), "Current Plan", "Already Subscribed?", "Compare Plans", "You Have Premium", "Restore Purchases", "Have a Code?", "Enter Code", "Manage or Cancel Subscription", "Terms of Use", "Privacy Policy", "Try Again", "See Plans", "Monthly Plan", "Turn Auto-Renew Back On", "Keep Premium Beyond Dec 12, 2026", "Already Subscribed on Another Device?", "You Are All Set", "3 Features · Tap to View", "Other Options".
+- **One spelling:** "Save 20%" on the plan row and the green tag; "Cancel any time." everywhere (was also "Cancel anytime.").
+- **No shouting or chatty words:** the badge over a booked plan says "Next" (was "NEXT"); a kids' app asks "Ask a Parent or Guardian" (was "Ask a grown-up"); no exclamation marks or contractions ("You're", "isn't", "hasn't", "Couldn't").
+- **Full sentences:** "Data Export is part of Premium." / "Upgrade to Premium to use this feature.", "Welcome to Premium. Every feature is now available.", "Could not reach the store. Check your connection and try again.", "Auto-renew is off.", "You keep Premium Monthly until Dec 12, 2026.", "Premium missing on this device? Tap to check.", "Premium is active on this Apple ID.", "Premium was restored.", "No purchases were found on this Apple ID.", "Could not reach the App Store. Tap to try again.", "Checking Your Purchases…", "Checking with the App Store…".
+- **Before You Go:** the switch row reads "$59.99 a year, about $4.99 a month." (the price now comes with `every`, not "/year").
+- The locked row hint says "Upgrade to Premium"; the Get Premium note says "Includes every feature."; the welcome card says "Every Premium feature is now available."
+
+Upgrading: nothing to change in code. Apps that matched the old words in their own tests (for example "Restore purchases" or "NEXT") need the new words. Apps must not override these strings (owner rule: words come from the kit).
+
 ## 1.23.0
 
 - **Payment problems show without a server.** When the store could not take a renewal payment (`renewal.billingIssue`, from app-payments-kit 2.7.0), the status card, the Premium page and `SubscriptionRow` now say "There is a problem with your payment…" (`graceNote`). Before, only a server row in grace did, so an app with no backend kept saying "Renews" until Premium ended.

@@ -133,8 +133,8 @@ describe('a trial of months says months (row 83)', () => {
     const yearly = { ...plan('yearly', 'premium', 39.99, 12, 30), trial: { unit: 'MONTH' as const, count: 1 } };
     const payments = fakePayments({ loadPlans: vi.fn(async () => [yearly, plan('monthly', 'premium', 6.99, 1)]) });
     const m = await mount(app(<PlansScreen onOpenTerms={vi.fn()} onOpenPrivacy={vi.fn()} />, payments));
-    expect(m.shown('Start 1-month free trial')).toBe(true);
-    expect(m.shown('Start 30-day free trial')).toBe(false);
+    expect(m.shown('Start 1-Month Free Trial')).toBe(true);
+    expect(m.shown('Start 30-Day Free Trial')).toBe(false);
     expect(m.shown('Free for 1 month, then $39.99 a year. Cancel any time.')).toBe(true);
   });
 });

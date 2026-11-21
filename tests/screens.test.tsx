@@ -42,14 +42,14 @@ describe('PlansScreen layout', () => {
 
   it('keeps Restore purchases and Have a code? on one line, with no Already subscribed box', async () => {
     const m = await mount(app(<PlansScreen {...legal} />));
-    expect(m.shown('Already subscribed?')).toBe(false);
-    expect(sameRow(m.button('Restore purchases'), m.button('Have a code?'))).toBe(true);
+    expect(m.shown('Already Subscribed?')).toBe(false);
+    expect(sameRow(m.button('Restore Purchases'), m.button('Have a Code?'))).toBe(true);
   });
 
   it('puts the main button after the plans and table, inside the scroll, not pinned below it', async () => {
     const m = await mount(app(<PlansScreen {...legal} />));
     const scroll = m.root.root.findAll((n) => n.type === 'ScrollView')[0]!;
-    expect(scroll.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === 'Start 7-day free trial')).not.toHaveLength(0);
+    expect(scroll.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === 'Start 7-Day Free Trial')).not.toHaveLength(0);
   });
 });
 
@@ -57,11 +57,11 @@ describe('PlansScreen', () => {
   it('shows store prices, the trial only when offered, and the required links', async () => {
     const m = await mount(app(<PlansScreen {...legal} />));
     expect(m.shown('$39.99')).toBe(true);
-    expect(m.shown('$3.33/month · save 52%')).toBe(true);
+    expect(m.shown('$3.33/month · Save 52%')).toBe(true);
     expect(m.shown('/year')).toBe(true);
-    expect(m.shown('Start 7-day free trial')).toBe(true);
-    expect(m.shown('Restore purchases')).toBe(true);
-    expect(m.shown('Terms of use')).toBe(true);
+    expect(m.shown('Start 7-Day Free Trial')).toBe(true);
+    expect(m.shown('Restore Purchases')).toBe(true);
+    expect(m.shown('Terms of Use')).toBe(true);
     await press(m.label('Monthly, $6.99'));
     expect(m.shown('Upgrade to Premium')).toBe(true);
   });
@@ -70,11 +70,11 @@ describe('PlansScreen', () => {
     const payments = fakePayments();
     const onUnlocked = vi.fn();
     const m = await mount(app(<PlansScreen {...legal} onUnlocked={onUnlocked} />, payments));
-    await press(m.label('Start 7-day free trial'));
+    await press(m.label('Start 7-Day Free Trial'));
     expect(payments.buy).toHaveBeenCalledWith(expect.objectContaining({ id: 'yearly' }));
     expect(onUnlocked).toHaveBeenCalledWith('premium');
-    expect(m.shown('Welcome to Premium! Everything is unlocked.')).toBe(true);
-    expect(m.shown('You have Premium')).toBe(true);
+    expect(m.shown('Welcome to Premium. Every feature is now available.')).toBe(true);
+    expect(m.shown('You Have Premium')).toBe(true);
   });
 
   it('greys out the current plan and starts on a switch to the best other length', async () => {
@@ -82,9 +82,9 @@ describe('PlansScreen', () => {
     const onSwitch = vi.fn();
     const m = await mount(app(<PlansScreen {...legal} currentPlanId="monthly" onSwitch={onSwitch} />, payments));
     await payments.emit({ tier: 'premium' });
-    expect(m.shown('Current plan')).toBe(true);
+    expect(m.shown('Current Plan')).toBe(true);
     expect(m.shown('CURRENT')).toBe(true);
-    expect(m.label('Monthly, $6.99, Current plan')!.props.accessibilityState.disabled).toBe(true);
+    expect(m.label('Monthly, $6.99, Current Plan')!.props.accessibilityState.disabled).toBe(true);
     // The badge plan is picked to start with, and the footer prices the plan being switched to.
     expect(m.shown('Switch to Yearly')).toBe(true);
     expect(m.shown('$39.99 a year. Cancel any time.')).toBe(true);
@@ -116,7 +116,7 @@ describe('PlansScreen', () => {
     await payments.emit(monthly);
     await press(m.label('Switch to Yearly'));
     expect(payments.buy).toHaveBeenCalledOnce();
-    expect(m.shown('NEXT')).toBe(true);
+    expect(m.shown('Next')).toBe(true);
     expect(m.texts().some((x) => x.startsWith('Yearly Starts '))).toBe(true);
     expect(m.texts().some((x) => x.startsWith('Your switch to Yearly is booked.'))).toBe(true);
     expect(m.texts().some((x) => x.startsWith('✓ Yearly Starts '))).toBe(true);
@@ -126,11 +126,11 @@ describe('PlansScreen', () => {
     // A new launch reads it back.
     const again = await mount(wrap(<Switcher />));
     await payments.emit(monthly);
-    expect(again.shown('NEXT')).toBe(true);
+    expect(again.shown('Next')).toBe(true);
 
     // Renewal on Yearly: the note goes and the saved copy with it.
     await payments.emit({ tier: 'premium', renewal: { until: '2100-12-12T10:00:00Z', willRenew: true, productId: 'app_yearly' } });
-    expect(again.shown('NEXT')).toBe(false);
+    expect(again.shown('Next')).toBe(false);
     expect(saved.size).toBe(0);
   });
 
@@ -155,22 +155,22 @@ describe('PlansScreen', () => {
 
     // Turned off auto-renew: the booked switch is hidden and dropped.
     await payments.emit({ tier: 'premium', renewal: { ...monthly.renewal, willRenew: false } });
-    expect(m.shown('NEXT')).toBe(false);
+    expect(m.shown('Next')).toBe(false);
     expect(saved.size).toBe(0);
 
     // Undone in the store: it renewed past the start date still on Monthly.
     await payments.emit(monthly);
     await press(m.label('Switch to Yearly'));
-    expect(m.shown('NEXT')).toBe(true);
+    expect(m.shown('Next')).toBe(true);
     await payments.emit({ tier: 'premium', renewal: { until: '2100-01-12T10:00:00Z', willRenew: true, productId: 'app_monthly' } });
-    expect(m.shown('NEXT')).toBe(false);
+    expect(m.shown('Next')).toBe(false);
     expect(saved.size).toBe(0);
 
     // Broken saved data is ignored rather than crashing.
     saved.set('app-subscriptions-kit:pending-switch:u1', '{}');
     const again = await mount(wrap(<Switcher />));
     await payments.emit(monthly);
-    expect(again.shown('NEXT')).toBe(false);
+    expect(again.shown('Next')).toBe(false);
     expect(again.shown('Switch to Yearly')).toBe(true);
   });
 
@@ -192,14 +192,14 @@ describe('PlansScreen', () => {
     const m = await mount(app(<PlansScreen {...legal} currentPlanId="yearly" onSwitch={vi.fn()} canSwitchTo={longer} currentMark={<Text>MARK</Text>} />, payments));
     await payments.emit({ tier: 'premium' });
     // Yearly is the longest: nothing shorter is offered, the yearly row stays picked and the button says so.
-    expect(m.shown('You have Premium')).toBe(true);
+    expect(m.shown('You Have Premium')).toBe(true);
     expect(m.texts().some((t) => t.startsWith('Switch to'))).toBe(false);
     expect(m.label('Monthly, $6.99')!.props.accessibilityState.disabled).toBe(true);
     expect(m.shown('MARK')).toBe(true);
     // Tapping Monthly never moves the pick: Yearly stays, and the screen says why instead of looking ignored.
     await press(m.label('Monthly, $6.99'));
-    expect(m.shown("You're on Premium Yearly. Monthly isn't offered while it's active.")).toBe(true);
-    expect(m.label('Yearly, $39.99, Current plan')!.props.accessibilityState.checked).toBe(true);
+    expect(m.shown('You are on Premium Yearly. Monthly is not available while this plan is active.')).toBe(true);
+    expect(m.label('Yearly, $39.99, Current Plan')!.props.accessibilityState.checked).toBe(true);
     expect(m.label('Monthly, $6.99')!.props.accessibilityState.checked).toBe(false);
   });
 
@@ -238,7 +238,7 @@ describe('PlansScreen', () => {
     const payments = fakePayments();
     const m = await mount(app(<PlansScreen {...legal} currentPlanId="monthly" />, payments));
     await payments.emit({ tier: 'premium' });
-    expect(m.shown('You have Premium')).toBe(true);
+    expect(m.shown('You Have Premium')).toBe(true);
     expect(m.shown('$6.99 a month. Cancel any time.')).toBe(true);
     expect(m.texts().some((t) => t.includes('$39.99 a year'))).toBe(false);
   });
@@ -248,9 +248,9 @@ describe('PlansScreen', () => {
     const onManage = vi.fn();
     const m = await mount(app(<PlansScreen {...legal} currentPlanId="monthly" onManage={onManage} />, payments));
     await payments.emit({ tier: 'premium' });
-    await press(m.button('Manage or cancel subscription'));
+    await press(m.button('Manage or Cancel Subscription'));
     expect(onManage).toHaveBeenCalled();
-    expect(m.shown('Restore purchases')).toBe(true);
+    expect(m.shown('Restore Purchases')).toBe(true);
   });
 
   it('keeps other plans locked while subscribed when switching is not offered or blocked', async () => {
@@ -265,7 +265,7 @@ describe('PlansScreen', () => {
   it('shows the store message on failure and nothing on cancel', async () => {
     const payments = fakePayments({ buy: vi.fn(async () => ({ ok: false as const, cancelled: false, message: 'No internet connection.' })) });
     const m = await mount(app(<PlansScreen {...legal} />, payments));
-    await press(m.label('Start 7-day free trial'));
+    await press(m.label('Start 7-Day Free Trial'));
     expect(m.shown('No internet connection.')).toBe(true);
   });
 
@@ -273,7 +273,7 @@ describe('PlansScreen', () => {
     const payments = fakePayments({ loadPlans: vi.fn(async () => []) });
     const m = await mount(app(<PlansScreen {...legal} previewPlans={[plan('yearly', 'premium', 1, 12)]} />, payments));
     expect(m.shown('$1.00')).toBe(false);
-    expect(m.shown('Could not reach the store. Check the connection.')).toBe(true);
+    expect(m.shown('Could not reach the store. Check your connection and try again.')).toBe(true);
   });
 
   it('uses preview prices where there is no store (web, Expo Go)', async () => {
@@ -290,7 +290,7 @@ describe('PlansScreen', () => {
     const kids = defineSubscription({ ...config, kids: true });
     const check = vi.fn(async () => false);
     const m = await mount(app(<PlansScreen {...legal} />, payments, kids, check));
-    await press(m.label('Start 7-day free trial'));
+    await press(m.label('Start 7-Day Free Trial'));
     expect(check).toHaveBeenCalled();
     expect(payments.buy).not.toHaveBeenCalled();
   });
@@ -315,21 +315,21 @@ describe('PlansScreen', () => {
   it('on iPhone opens the store code sheet; elsewhere asks for the code', async () => {
     const payments = fakePayments();
     const m = await mount(app(<PlansScreen {...legal} />, payments));
-    await press(m.button('Have a code?'));
+    await press(m.button('Have a Code?'));
     expect(payments.redeemCode).toHaveBeenCalledWith('');
     Platform.OS = 'android';
     const a = await mount(app(<PlansScreen {...legal} />, fakePayments()));
-    await press(a.button('Have a code?'));
-    expect(a.label('Enter code')).toBeDefined();
+    await press(a.button('Have a Code?'));
+    expect(a.label('Enter Code')).toBeDefined();
     Platform.OS = 'ios';
   });
 
   it('has no code box where the provider takes no codes (the website)', async () => {
     const m = await mount(app(<PlansScreen {...legal} />, fakePayments({ canRedeemCode: false })));
-    expect(m.shown('Have a code?')).toBe(false);
-    expect(m.shown('Restore purchases')).toBe(true);
+    expect(m.shown('Have a Code?')).toBe(false);
+    expect(m.shown('Restore Purchases')).toBe(true);
     const r = await mount(app(<SubscriptionRow onOpenPlans={() => undefined} />, fakePayments({ canRedeemCode: false })));
-    expect(r.shown('Have a code?')).toBe(false);
+    expect(r.shown('Have a Code?')).toBe(false);
   });
 });
 
@@ -339,11 +339,11 @@ describe('gates and badges', () => {
     const unlock = vi.fn();
     const Child = () => <>{'unlocked content'}</>;
     const m = await mount(app(<PremiumGate feature="practiceTest" name="Practice tests" onUnlock={unlock}><Child /></PremiumGate>, payments));
-    expect(m.shown('Practice tests is in Premium')).toBe(true);
-    await press(m.label('See plans'));
+    expect(m.shown('Practice tests is part of Premium.')).toBe(true);
+    await press(m.label('See Plans'));
     expect(unlock).toHaveBeenCalled();
     payments.emit({ tier: 'premium' });
-    expect(m.shown('Practice tests is in Premium')).toBe(false);
+    expect(m.shown('Practice tests is part of Premium.')).toBe(false);
   });
 
   it('usePremium follows the store', async () => {
@@ -392,7 +392,7 @@ describe('SubscriptionRow', () => {
     const m = await mount(app(<SubscriptionRow onOpenPlans={() => undefined} />, payments));
     payments.emit({ tier: 'premium', source: 'account', server: { tier: 'premium', activeUntil: '2027-01-15T00:00:00Z', status: 'grace', willRenew: false } });
     expect(m.shown('Ends')).toBe(true);
-    await press(m.button('Manage or cancel subscription'));
+    await press(m.button('Manage or Cancel Subscription'));
     expect(payments.openManage).toHaveBeenCalled();
     expect(m.texts().some((t) => t.startsWith('There is a problem with your payment'))).toBe(true);
   });
@@ -409,11 +409,11 @@ describe('SubscriptionRow', () => {
   });
 
   it('shows the tester switch only when the payments kit offers it', async () => {
-    expect((await mount(app(<SubscriptionRow onOpenPlans={() => undefined} />))).label('Pretend to have Premium')).toBeUndefined();
+    expect((await mount(app(<SubscriptionRow onOpenPlans={() => undefined} />))).label('Pretend to Have Premium')).toBeUndefined();
     const setTesterTier = vi.fn(async () => {});
     const payments = fakePayments({ testerAvailable: true, setTesterTier, getTesterTier: async () => null });
     const m = await mount(app(<SubscriptionRow onOpenPlans={() => undefined} />, payments));
-    const sw = m.label('Pretend to have Premium')!;
+    const sw = m.label('Pretend to Have Premium')!;
     const { act } = await import('./render');
     await act(async () => { await sw.props.onValueChange(true); });
     expect(setTesterTier).toHaveBeenCalledWith('premium');
