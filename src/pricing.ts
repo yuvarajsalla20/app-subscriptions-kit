@@ -1,4 +1,4 @@
-import type { StorePlan } from './payments';
+import type { StoreOffer, StorePlan } from './payments';
 
 /** Months in a plan's period (a year = 12); null for a one-off purchase or a period shorter than a month. */
 export function months(p: Pick<StorePlan, 'period'>): number | null {
@@ -46,4 +46,20 @@ export function isPlan(productId: string | null | undefined, planId: string): bo
   const id = planId.toLowerCase();
   if (!product || !id) return false;
   return product === id || ['_', '.', '-'].some((sep) => product.endsWith(sep + id));
+}
+
+/** Months in a store period, with days and weeks as parts of a month (a week is about 0.23). */
+const monthsIn = (period: { unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR'; count: number }): number =>
+  period.unit === 'YEAR' ? 12 * period.count : period.unit === 'MONTH' ? period.count : ((period.unit === 'WEEK' ? 7 : 1) * period.count) / 30.4375;
+
+/**
+ * Percent a subscriber offer saves against the plan's own price, per month, rounded. The offer's price is for one offer period,
+ * which can be several months paid up front ($5.99 for 3 months on a $3.99 monthly plan is 50% off, not -50%). 0 when it
+ * saves nothing or can't be compared.
+ */
+export function offerSaving(offer: Pick<StoreOffer, 'price' | 'period'> & { plan: Pick<StorePlan, 'price' | 'period'> }): number {
+  if (!offer.plan.period || offer.plan.price <= 0 || offer.period.count <= 0 || offer.plan.period.count <= 0) return 0;
+  const offerMonthly = offer.price / monthsIn(offer.period);
+  const planMonthly = offer.plan.price / monthsIn(offer.plan.period);
+  return Math.max(0, Math.min(100, Math.round(100 - (100 * offerMonthly) / planMonthly)));
 }

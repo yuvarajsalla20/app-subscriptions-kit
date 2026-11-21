@@ -12,7 +12,7 @@ export function SubscriptionStatusCard({ icon, ...look }: LookProps & { icon?: R
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
   if (!sub.paid) return null;
-  const l = statusLines({ tierLabel: sub.tierLabel, server: sub.server, renewal: sub.renewal, plans: sub.config.plans, strings: s, now: new Date() });
+  const l = statusLines({ tierLabel: sub.tierLabel, server: sub.server, renewal: sub.renewal, plans: sub.config.plans, strings: s, now: new Date(), source: sub.source });
   // A switch that starts at renewal: "Switching to Yearly on Dec 12" under the plan, until the store shows it.
   const next = sub.pendingSwitch ? sub.config.plans.find((p) => p.id === sub.pendingSwitch!.planId)?.label : undefined;
   const switching = next ? s.switchingTo(next, shortDay(sub.pendingSwitch!.startsAt)) : '';

@@ -104,7 +104,11 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
   const live = sub.ready && store.length > 0;
   const tabLabel = config.tierLabels[tab]!;
   const trial = !sub.paid ? chosen?.sp.trialDays ?? null : null;
-  const label = pending ? s.planStarts(pending.cfg.label, pendingDay) : switching ? s.switchPlan(chosen!.cfg.label) : has ? s.youHave(config.tierLabels[sub.tier]!) : trial ? s.startTrial(trial) : sub.paid ? s.switchTo(tabLabel) : s.upgrade(tabLabel);
+  // A trial of months or years is said in months or years: a 1-month trial runs one calendar month, not 30 days.
+  const t = trial ? chosen?.sp.trial : null;
+  const trialPeriod = t && (t.unit === 'MONTH' || t.unit === 'YEAR') ? { unit: t.unit, count: t.count } : null;
+  const label = pending ? s.planStarts(pending.cfg.label, pendingDay) : switching ? s.switchPlan(chosen!.cfg.label) : has ? s.youHave(config.tierLabels[sub.tier]!)
+    : trialPeriod ? s.startTrialPeriod(trialPeriod.unit, trialPeriod.count) : trial ? s.startTrial(trial) : sub.paid ? s.switchTo(tabLabel) : s.upgrade(tabLabel);
   // While subscribed, the price under the button is the current plan's, or the one being switched to; never a row just looked at.
   const priced = !has ? chosen : switching ? chosen : current;
   const locked = has && !switching;
@@ -270,7 +274,9 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
             style={{ minHeight: 52, borderRadius: c.shadow ? 26 : c.radius, alignItems: 'center', justifyContent: 'center', backgroundColor: button, opacity: locked ? 0.5 : 1 }}>
             <Text style={{ color: onButton, fontWeight: '800', fontSize: 16 }}>{busy === 'buy' ? '…' : pending ? `✓ ${label}` : label}</Text>
           </Pressable>
-          {priced && priced.sp.period && <Text style={{ fontSize: 12, color: c.muted, textAlign: 'center' }}>{s.thenPrice(priced.sp.priceString, s.every(priced.sp.period.unit, priced.sp.period.count), trial)}</Text>}
+          {priced && priced.sp.period && <Text style={{ fontSize: 12, color: c.muted, textAlign: 'center' }}>{trialPeriod
+            ? s.thenPriceAfterPeriod(priced.sp.priceString, s.every(priced.sp.period.unit, priced.sp.period.count), trialPeriod.unit, trialPeriod.count)
+            : s.thenPrice(priced.sp.priceString, s.every(priced.sp.period.unit, priced.sp.period.count), trial)}</Text>}
         </View>
         {/* Restore, a code and Manage share one line; wraps on a narrow screen. */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 18 }}>

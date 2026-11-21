@@ -3,6 +3,7 @@ import type { LimitValue, SubscriptionConfig } from './define';
 import type { PaymentsLike, PurchaseResult, RenewalInfo, ServerInfo, StoreOffer, StorePlan, WatchState } from './payments';
 import { sameWatchState } from './payments';
 import { isPlan } from './pricing';
+import { subscriptionTerms } from './status';
 import { allowed, atLeast, canUse, limitFor, rank, tierFor } from './rules';
 
 /** A plan change the store applies at the next renewal (a longer plan of the same level on the App Store). */
@@ -94,8 +95,12 @@ const CANCELLED: PurchaseResult = { ok: false, cancelled: true, message: '' };
 export interface SubscriptionProviderProps {
   config: SubscriptionConfig;
   payments: PaymentsLike;
-  /** The signed-in account, or null. Purchases are booked to it. */
-  userId: string | null;
+  /**
+   * The signed-in account, or null once signed out. Purchases are booked to it. Pass `undefined` while the app is still
+   * restoring the session: nothing is asked of the store and `loading` stays true until the account is known, so the store is
+   * never set up on an anonymous id that then needs a network call to move to the real account.
+   */
+  userId: string | null | undefined;
   /** The app's own grown-ups check (kids' apps). Resolve true to go on. */
   grownUpCheck?: () => Promise<boolean>;
   /** Keeps a booked plan switch between launches (AsyncStorage). Without it the switch shows until the app closes. */
@@ -141,7 +146,7 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
   // Shown only while it can still happen: a paid account of the plan's tier that is still renewing.
   const tierOk = config.tiers.includes(state.tier) ? state.tier : 'free';
   const bookedPlan = booked ? config.plans.find((p) => p.id === booked.planId) : undefined;
-  const stopping = state.server ? state.server.willRenew === false : state.renewal?.willRenew === false;
+  const stopping = subscriptionTerms({ server: state.server, renewal: state.renewal, source: state.source }).ending;
   const pendingSwitch = booked && bookedPlan && bookedPlan.tier === tierOk && tierOk !== 'free' && !stopping ? booked : null;
   const tierNow = useRef('free');
   tierNow.current = state.tier;
@@ -151,6 +156,7 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
     // Another person signed in: nothing of the last one's subscription may show (their tier, dates or welcome) until the new answer.
     setState({ tier: 'free', source: 'free', server: null });
     setJustSubscribed(false);
+    if (userId === undefined) return; // still signing in: wait for the account
     const stop = payments.watch(userId, (s) => {
       // The same answer again (each return to the app asks twice or more) keeps the old object: no app-wide redraw.
       setState((prev) => (sameWatchState(prev, s) ? prev : s));

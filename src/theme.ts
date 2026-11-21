@@ -102,6 +102,8 @@ export interface SubscriptionStrings {
   title: string;
   choosePlan: string;
   startTrial: (days: number) => string;
+  /** The button for a trial of months or years (1.23.0): "Start 1-month free trial". Day and week trials use `startTrial`. */
+  startTrialPeriod: (unit: 'MONTH' | 'YEAR', count: number) => string;
   upgrade: (tierLabel: string) => string;
   switchTo: (tierLabel: string) => string;
   /** Button when a subscriber picks another length of the same tier. */
@@ -120,6 +122,8 @@ export interface SubscriptionStrings {
   compareTitle: string;
   youHave: (tierLabel: string) => string;
   thenPrice: (price: string, every: string, trialDays: number | null) => string;
+  /** Under the button for a trial of months or years (1.23.0): "Free for 1 month, then $39.99 a year. Cancel any time." */
+  thenPriceAfterPeriod: (price: string, every: string, unit: 'MONTH' | 'YEAR', count: number) => string;
   every: (unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR', count: number) => string;
   perMonth: (price: string) => string;
   /** Beside a plan's price, on the same line: "/year", "/month", "/3 months". */
@@ -263,6 +267,7 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   title: 'Upgrade',
   choosePlan: 'Choose a plan',
   startTrial: (d) => `Start ${d}-day free trial`,
+  startTrialPeriod: (u, n) => `Start ${n}-${UNIT[u]} free trial`,
   upgrade: (t) => `Upgrade to ${t}`,
   switchTo: (t) => `Switch to ${t}`,
   switchPlan: (p) => `Switch to ${p}`,
@@ -274,6 +279,7 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   compareTitle: 'Compare plans',
   youHave: (t) => `You have ${t}`,
   thenPrice: (p, every, trial) => `${trial ? `Free for ${trial} days, then ` : ''}${p} ${every}. Cancel any time.`,
+  thenPriceAfterPeriod: (p, every, u, n) => `Free for ${n} ${UNIT[u]}${n === 1 ? '' : 's'}, then ${p} ${every}. Cancel any time.`,
   every: (u, n) => (n === 1 ? `a ${UNIT[u]}` : `every ${n} ${UNIT[u]}s`),
   perMonth: (p) => `${p}/month`,
   per: (u, n) => (n === 1 ? `/${UNIT[u]}` : `/${n} ${UNIT[u]}s`),
