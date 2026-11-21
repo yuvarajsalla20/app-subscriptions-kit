@@ -2,6 +2,18 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 1.23.0
+
+- **Payment problems show without a server.** When the store could not take a renewal payment (`renewal.billingIssue`, from app-payments-kit 2.7.0), the status card, the Premium page and `SubscriptionRow` now say "There is a problem with your payment…" (`graceNote`). Before, only a server row in grace did, so an app with no backend kept saying "Renews" until Premium ended.
+- **A stale server row no longer overrides the store.** The row counts for Renews / Ends only while it gives the tier (the tier comes from it, or its end date is still ahead); when both count, the one that runs later wins, and on the same date the store does. A cancel in Apple's sheet now shows before the webhook lands, and an expired or refunded row no longer shows a date already past or "Renew Subscription" to someone whose store plan renews. The Premium page and `SubscriptionRow` also leave out a date already past, as the status card did. New `subscriptionTerms()` export does this for any screen; `statusLines()` takes an optional `source`.
+- **The stay offer percent is per month.** A pay-up-front offer (3 months for $5.99 on a $3.99 Monthly plan) now reads "Stay for 50% Off", not "-50%". An offer that saves nothing per month is not offered in Before You Go. New `offerSaving()` export.
+- **SubscriptionRow says what happened.** Restore shows "…is back on this device", "No purchase was found…" or the store's message, and a failure to reach the store, like the Plans screen. A code sheet or manage screen that fails to open says so instead of failing silently.
+- **Trials of months or years say months or years.** With app-payments-kit 2.7.0's `trial`, the Plans screen says "Start 1-month free trial" and "Free for 1 month, then …", not "30-day". New strings `startTrialPeriod` and `thenPriceAfterPeriod`; day and week trials still use `startTrial` and `thenPrice`.
+- **No store while sign-in is loading.** `SubscriptionProvider` takes `userId={undefined}` while the app is still restoring the session: nothing is asked of the store and `loading` stays true. With app-payments-kit 2.7.0, a paying account offline at launch also keeps its last known tier (`WatchState.remembered`) instead of reading Free.
+- The in-app switch rule is unchanged: subscribers can move to a longer plan only (no Yearly to Monthly).
+
+To adopt: pass `undefined` as `userId` while sign-in is loading (HringNring: `auth.status === 'loading' ? undefined : uid`). Everything else works as before.
+
 ## 1.22.0
 
 - **Premium page, optional quiet mode:** new `quietAfterStore` prop (default `false`). When on, closing the store's subscription screen shows no "Updating Your Subscription…" loader and no "hasn't confirmed a change yet" line, which mostly showed a spinner for nothing when the person closed the screen without changing anything. The page still listens for 15 minutes, and a late change still ends with "You're All Set!" or "Subscription Updated".
