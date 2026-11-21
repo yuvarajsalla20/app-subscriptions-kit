@@ -2,6 +2,12 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 2.1.0
+
+Nothing to change in apps; needs app-payments-kit 2.9.0 for the new behaviour (older versions keep the 2.0.0 behaviour).
+
+- **The Premium page names the store that bills the subscription.** A subscription bought on iPhone and seen on Android says App Store and Apple ID in Restore and the notes, and a Google Play subscription seen on iPhone says Google Play and Google Account. `RenewalInfo` gains `billedBy`.
+
 ## 2.0.0
 
 The default words on the Plans screen, the Premium page, the status card, the gate and the Settings row now follow the Writing rule: Title Case for titles, buttons and labels, and full calm sentences with periods for every line. Nothing else changes, but the words people see do, so this is a major version.
