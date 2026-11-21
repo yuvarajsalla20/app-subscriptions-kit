@@ -196,7 +196,7 @@ export interface SubscriptionStrings {
   restoreSubscription: string;
   /** Under Restore Subscription on a free account. */
   restoreHint: string;
-  /** Under Restore Subscription once paid: "Premium missing on this device? Tap to check." */
+  /** Under Restore Purchases once paid: "Restore Premium purchased on another device." */
   restoreHintPaid: (tierLabel: string) => string;
   /** While the store is checked. `store` is "App Store" or "Google Play". */
   /** Under the top card from the moment the store's manage screen closes until the change shows (up to 20 seconds). */
@@ -237,6 +237,8 @@ export interface SubscriptionStrings {
   saveTag: (pct: number) => string;
   /** The features header and its count. */
   premiumFeatures: (tierLabel: string) => string;
+  /** 3.0.0: the heading over the features a subscriber can switch or edit on the Premium page. */
+  premiumSettings: (tierLabel: string) => string;
   featureCount: (n: number) => string;
   tapToSee: string;
   /** The list of what stops working, after a cancel and in Before You Go. */
@@ -287,7 +289,7 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   save: (n) => `Save ${n}%`,
   restore: 'Restore Purchases',
   restoring: 'Checking Your Purchases…',
-  haveCode: 'Have a Code?',
+  haveCode: 'Redeem a Code',
   enterCode: 'Enter Code',
   apply: 'Apply',
   manage: 'Manage or Cancel Subscription',
@@ -335,9 +337,9 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   continuesAfter: (t, d) => `Keep ${t} Beyond ${d}`,
   changePlan: 'Change Plan',
   planLine: (p, price) => `${p} · ${price}`,
-  restoreSubscription: 'Restore Subscription',
-  restoreHint: 'Already Subscribed on Another Device?',
-  restoreHintPaid: (tier) => `${tier} missing on this device? Tap to check.`,
+  restoreSubscription: 'Restore Purchases',
+  restoreHint: 'Restore a subscription purchased on another device.',
+  restoreHintPaid: (tier) => `Restore ${tier} purchased on another device.`,
   updatingSubscription: 'Updating Your Subscription…',
   storeName: (p) => (p === 'ios' ? 'App Store' : p === 'android' ? 'Google Play' : 'Store'),
   storeAccount: (p) => (p === 'ios' ? 'Apple ID' : p === 'android' ? 'Google Account' : 'Account'),
@@ -360,6 +362,7 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
     `Your switch to ${next} is booked. ${current} stays${date ? ` until ${date}` : ' until it renews'}, then ${next} begins. Nothing is charged until then.`,
   saveTag: (n) => `Save ${n}%`,
   premiumFeatures: (t) => `${t} Features`,
+  premiumSettings: (t) => `${t} Settings`,
   featureCount: (n) => (n === 1 ? '1 Feature' : `${n} Features`),
   tapToSee: 'Tap to View',
   whatYouLose: (d) => (d ? `What You Lose After ${d}` : 'What You Lose'),

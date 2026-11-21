@@ -49,7 +49,7 @@ describe('PremiumPage', () => {
   const ended = { tier: 'premium', source: 'store' as const, renewal: { until: '2099-01-15T12:00:00Z', willRenew: false, productId: 'x_monthly' } };
   const offer = { id: 'stay', plan: plan('monthly', 'premium', 6.99, 1), priceString: '$3.49', price: 3.49, period: { unit: 'MONTH' as const, count: 1 }, cycles: 3 };
 
-  it('free: Get Premium with store prices, See Plans first, features open with locks', async () => {
+  it('free: Get Premium with store prices and See Plans first; 3.0.0: no feature list (the settings kit compares Free and Premium)', async () => {
     const onOpenPlans = vi.fn();
     const m = await mount(page(fakePayments(), onOpenPlans));
     expect(m.shown('You Have Premium')).toBe(false);
@@ -58,12 +58,15 @@ describe('PremiumPage', () => {
     expect(m.shown('$6.99/month or $39.99/year')).toBe(true);
     expect(m.shown(DEFAULT_STRINGS.restoreSubscription)).toBe(true);
     expect(m.shown(DEFAULT_STRINGS.cancelSubscription)).toBe(false);
+    expect(m.shown(DEFAULT_STRINGS.restoreHint)).toBe(true);
     await press(m.button(DEFAULT_STRINGS.unlock));
-    await press(m.label(`More Alert Sounds, ${DEFAULT_STRINGS.lockedLabel}`));
-    expect(onOpenPlans).toHaveBeenCalledTimes(2);
+    expect(onOpenPlans).toHaveBeenCalledTimes(1);
+    expect(m.shown('More Alert Sounds')).toBe(false);
+    expect(m.shown('Background Effects')).toBe(false);
+    expect(m.shown(DEFAULT_STRINGS.premiumSettings('Premium'))).toBe(false);
   });
 
-  it('paid: status card, features closed until tapped, Change Plan shows the saving', async () => {
+  it('paid: status card, Premium Settings holds only the features with controls, Change Plan shows the saving', async () => {
     const payments = fakePayments();
     const onChange = vi.fn();
     const m = await mount(page(payments, vi.fn(), onChange));
@@ -71,16 +74,17 @@ describe('PremiumPage', () => {
     expect(m.shown('You Have Premium')).toBe(true);
     expect(m.shown('Monthly Plan')).toBe(true);
     expect(m.texts().some((t) => t.startsWith('Renews '))).toBe(true);
-    expect(m.shown('Background Effects')).toBe(false);
-    await press(m.button('Premium Features'));
-    expect(m.shown(`✓ ${DEFAULT_STRINGS.included}`)).toBe(true);
+    expect(m.shown('Premium Settings')).toBe(true);
+    expect(m.shown('Background Effects')).toBe(true);
+    // A perk with no switch, editor or page is not repeated here: the settings kit's comparison lists it.
+    expect(m.shown('More Alert Sounds')).toBe(false);
     await press(m.label('Background Effects'));
     expect(onChange).toHaveBeenCalledWith(false);
     expect(m.shown('Yearly · $39.99/year')).toBe(true);
     expect(m.shown('Save 52%')).toBe(true);
   });
 
-  it('a feature with onPress opens its page once paid, and opens the plans while locked', async () => {
+  it('a feature with onPress opens its page once paid, and is not shown before', async () => {
     const onOpen = vi.fn();
     const onOpenPlans = vi.fn();
     const withLink = [{ key: 'export', label: 'Data Export', detail: 'CSV or PDF', onPress: onOpen }];
@@ -90,12 +94,9 @@ describe('PremiumPage', () => {
         <PremiumPage onOpenPlans={onOpenPlans} features={withLink} />
       </SubscriptionProvider>,
     );
-    await press(m.label(`Data Export, ${DEFAULT_STRINGS.lockedLabel}`));
-    expect(onOpenPlans).toHaveBeenCalledTimes(1);
-    expect(onOpen).not.toHaveBeenCalled();
+    expect(m.shown('Data Export')).toBe(false);
     await act(async () => payments.emit(renewing));
-    await press(m.button('Premium Features'));
-    expect(m.shown('›')).toBe(true);
+    expect(m.shown('CSV or PDF')).toBe(true);
     await press(m.label('Data Export'));
     expect(onOpen).toHaveBeenCalledTimes(1);
   });

@@ -2,6 +2,17 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 3.0.0
+
+**The Premium page no longer repeats the feature list; app-settings-kit 10.0.0 compares Free and Premium below it.** Premium and free features looked alike; the settings kit now ends every plan page with one comparison table, so this page shows only what a person does with Premium.
+
+- **Free account:** Get Premium, See Plans, Restore Purchases and Redeem a Code. The locked feature rows are gone.
+- **Subscriber:** the features with their own controls (a switch, an editor, a page to open) show under **Premium Settings**, always open. Perks with no control are not repeated.
+- **Professional wording:** "Redeem a Code" (was "Have a Code?"), "Restore Purchases" (was "Restore Subscription"), "Restore a subscription purchased on another device." (was "Already Subscribed on Another Device?"), "Restore Premium purchased on another device." (was "Premium missing on this device? Tap to check.").
+- `featuresOpen` is deprecated and ignored. New string: `premiumSettings`.
+
+Upgrading: use app-settings-kit 10.0.0 or later and pass the full lists to its `plan.features` and `plan.freeFeatures`.
+
 ## 2.1.0
 
 Nothing to change in apps; needs app-payments-kit 2.9.0 for the new behaviour (older versions keep the 2.0.0 behaviour).
