@@ -2,6 +2,17 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 3.1.0
+
+**A floating Premium crown, always in view.** New `FloatingCrown`: a gold crown that floats over the app's main pages and opens the Plans screen with one tap.
+
+- **Drag it anywhere.** A press that moves drags the crown; it lifts and grows slightly. On release it settles on the nearest side edge, never over the middle of a row, and the place is kept between launches (`storage`, key `CROWN_KEY`).
+- **Free and member looks.** A free account sees a gold crown; a member sees an ivory crown with a gold outline. Both open the Plans screen.
+- **Room under lists.** `CROWN_SPACE` is the room a list leaves under its last row.
+- New theme key `crown`, new strings `crownLabel` and `crownHint`, new helpers `settle`, `placeAt` and `readPlace`.
+
+Nothing to change in apps that do not show the crown.
+
 ## 3.0.0
 
 **The Premium page no longer repeats the feature list; app-settings-kit 10.0.0 compares Free and Premium below it.** Premium and free features looked alike; the settings kit now ends every plan page with one comparison table, so this page shows only what a person does with Premium.

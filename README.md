@@ -2,7 +2,7 @@
 
 The subscription pattern for React Native and Expo apps (iOS, Android and web): one config for tiers, features and limits; checks such as `canUse()` and `limit()`; a `useSubscription()` hook; and themeable screens that follow the App Store and Google Play rules: the Plans screen, the Free vs paid table, a complete Premium page for Settings, lock badges and plan pills.
 
-**Current version: 3.0.0** (tag `v3.0.0`)
+**Current version: 3.1.0** (tag `v3.1.0`)
 
 It never talks to a store. Give it [app-payments-kit](https://github.com/yuvarajsalla20/app-payments-kit), or any object with the same few functions (`PaymentsLike` in `src/payments.ts`). For the full App Store Connect, RevenueCat and EAS setup, follow the Subscriptions and Payments Playbook in the app's `runbooks/` folder.
 
@@ -26,16 +26,16 @@ Tools that work alongside them: [code-review-kit](https://github.com/yuvarajsall
 ```jsonc
 // package.json
 "dependencies": {
-  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v3.0.0>",
+  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v3.1.0>",
   "app-payments-kit": "git+https://github.com/yuvarajsalla20/app-payments-kit.git#<full SHA of v2.8.0>"
 },
 "kitVersions": {
-  "app-subscriptions-kit": "v3.0.0",
+  "app-subscriptions-kit": "v3.1.0",
   "app-payments-kit": "v2.8.0"
 }
 ```
 
-Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Find a SHA with `git ls-remote https://github.com/yuvarajsalla20/app-subscriptions-kit refs/tags/v3.0.0`.
+Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Find a SHA with `git ls-remote https://github.com/yuvarajsalla20/app-subscriptions-kit refs/tags/v3.1.0`.
 
 **Peer dependencies:** `react` ≥ 18, `react-native` ≥ 0.74, `react-native-svg` ≥ 13 (Expo apps install it with `npx expo install react-native-svg`).
 
@@ -51,6 +51,7 @@ Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Fi
 | `usePremium()`, `useTier()` | Shortcuts: `{ premium, loading, source }` for one-tier apps, or the tier name |
 | `<PremiumPage>` | A complete Premium page for Settings: Get Premium, Premium Settings (the features with switches or editors, once paid), Cancel with a Before You Go sheet, Renew, Change Plan, Restore, the welcome card and the updating box |
 | `<PlansScreen>` | Store prices, per-month price and savings, trial wording only when the store offers one, a tab per paid tier, Restore, codes, Manage, auto-renew wording, terms and privacy links |
+| `<FloatingCrown>` | A gold crown that floats over the app's main pages and opens the Plans screen. It can be dragged anywhere, settles on the nearest side edge and keeps its place between launches. Members see an ivory crown with a gold outline |
 | `<CompareTable>` | Free vs paid tiers, one column per tier |
 | `<SubscriptionStatusCard>`, `statusLines()` | "You have Premium", the plan, and Renews or Ends |
 | `<SubscriptionRow>` | A compact Settings row: tier, renew or end date, Manage, code, Restore, and the developer tester switch |
@@ -170,6 +171,25 @@ What it shows:
 - **After a cancel:** Ends and "Auto-renew is off", then **Renew Subscription** ("Keep Premium Monthly beyond Dec 12, 2026").
 - **After the store's sheet closes:** "Updating Your Subscription…" until the change shows, then "You're All Set!" or "Subscription Updated".
 - **Right after a first purchase:** a Welcome to Premium card.
+
+## `FloatingCrown`
+
+One permanent way to Premium, always in view. Place it last inside a full-screen view, on the main pages only (e.g., Home, Completed and Settings), never on a form, sign-in or sheet.
+
+```tsx
+<FloatingCrown onPress={() => openPlans()} storage={AsyncStorage} top={insets.top + 72} bottom={insets.bottom + 24} onLift={() => Haptics.selectionAsync()} />
+```
+
+| Prop | Meaning |
+|---|---|
+| `onPress` | Opens the Plans screen, for a free account and a member alike |
+| `storage` | Keeps the place the person dragged it to (`CROWN_KEY`). Without it the crown starts in the bottom-right corner on each launch |
+| `top`, `bottom` | Space kept clear for the top bar and the Home indicator. Default 120 and 34 points |
+| `onLift` | Called as a drag begins, e.g., for a light haptic tap |
+
+- A press that moves less than six points is a tap; a longer movement drags. On release the crown settles on the nearest side edge.
+- Lists under the crown end with `CROWN_SPACE` (96 points) of room, so the crown never hides the last row.
+- Colors: `theme.crown` (light, middle and deep gold) and `theme.premiumSoft` for the member's crown. Words for screen readers: `crownLabel` and `crownHint`.
 
 ## `PlansScreen`
 

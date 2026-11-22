@@ -53,6 +53,8 @@ export interface SubscriptionTheme {
   /** A problem (Restore could not reach the store): the soft row and the round badge, with the danger color. */
   dangerSoft?: string;
   dangerBadge?: string;
+  /** The floating crown's gold, light to deep (4.0.0). Default: the gold of the Premium tag. */
+  crown?: readonly [string, string, string];
 }
 
 export const DEFAULT_THEME: SubscriptionTheme = {
@@ -239,6 +241,9 @@ export interface SubscriptionStrings {
   premiumFeatures: (tierLabel: string) => string;
   /** 3.0.0: the heading over the features a subscriber can switch or edit on the Premium page. */
   premiumSettings: (tierLabel: string) => string;
+  /** The floating crown, for screen readers (4.0.0): "Premium" for a free account, "Premium Member" once paid. */
+  crownLabel: (member: boolean) => string;
+  crownHint: string;
   featureCount: (n: number) => string;
   tapToSee: string;
   /** The list of what stops working, after a cancel and in Before You Go. */
@@ -363,6 +368,8 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   saveTag: (n) => `Save ${n}%`,
   premiumFeatures: (t) => `${t} Features`,
   premiumSettings: (t) => `${t} Settings`,
+  crownLabel: (member) => (member ? 'Premium Member' : 'Premium'),
+  crownHint: 'Opens the plans. Drag to move it.',
   featureCount: (n) => (n === 1 ? '1 Feature' : `${n} Features`),
   tapToSee: 'Tap to View',
   whatYouLose: (d) => (d ? `What You Lose After ${d}` : 'What You Lose'),

@@ -20,10 +20,21 @@ class Value {
   setValue(v: number) { this.v = v; }
   interpolate() { return this; }
 }
+class ValueXY {
+  x: Value;
+  y: Value;
+  constructor(p: { x: number; y: number } = { x: 0, y: 0 }) { this.x = new Value(p.x); this.y = new Value(p.y); }
+  setValue(p: { x: number; y: number }) { this.x.setValue(p.x); this.y.setValue(p.y); }
+  setOffset() {}
+  flattenOffset() {}
+  getTranslateTransform() { return [{ translateX: this.x.v }, { translateY: this.y.v }]; }
+}
 const anim = () => ({ start: (cb?: (r: { finished: boolean }) => void) => cb?.({ finished: true }), stop: () => undefined });
 export const Animated = {
   View: host('Animated.View'),
   Value,
+  ValueXY,
+  event: () => () => undefined,
   timing: anim,
   spring: anim,
   loop: anim,
@@ -33,3 +44,10 @@ export const Animated = {
   delay: anim,
 };
 export const Easing = { linear: (t: number) => t, quad: (t: number) => t, out: (f: unknown) => f, inOut: (f: unknown) => f };
+export const useWindowDimensions = () => ({ width: 390, height: 844, scale: 3, fontScale: 1 });
+// The last responder made, so a test can drive a drag by hand.
+type Handlers = Record<string, (e: unknown, g: { dx: number; dy: number }) => unknown>;
+export const PanResponder = {
+  last: null as Handlers | null,
+  create(h: Handlers) { PanResponder.last = h; return { panHandlers: {} }; },
+};

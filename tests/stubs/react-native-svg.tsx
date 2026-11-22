@@ -5,3 +5,6 @@ export default host('Svg');
 export const Svg = host('Svg');
 export const Path = host('Path');
 export const Circle = host('Circle');
+export const Defs = host('Defs');
+export const LinearGradient = host('LinearGradient');
+export const Stop = host('Stop');
