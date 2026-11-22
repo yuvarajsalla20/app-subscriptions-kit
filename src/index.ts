@@ -15,3 +15,4 @@ export { Crowns, Diamond } from './look';
 export type { LookProps } from './look';
 export type { PaymentsLike, PurchaseResult, RenewalInfo, ServerInfo, StoreOffer, StorePlan, WatchState } from './payments';
 export { sameWatchState } from './payments';
+export { CROWN_KEY, CROWN_SIZE, CROWN_SPACE, DEFAULT_GOLD, DEFAULT_PLACE, FloatingCrown, placeAt, readPlace, settle, type CrownPlace, type FloatingCrownProps } from './FloatingCrown';
