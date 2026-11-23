@@ -2,7 +2,7 @@
 
 The subscription pattern for React Native and Expo apps (iOS, Android and web): one config for tiers, features and limits; checks such as `canUse()` and `limit()`; a `useSubscription()` hook; and themeable screens that follow the App Store and Google Play rules: the Plans screen, the Free vs paid table, a complete Premium page for Settings, lock badges and plan pills.
 
-**Current version: 7.0.0** (tag `v7.0.0`)
+**Current version: 8.0.0** (tag `v8.0.0`)
 
 It never talks to a store. Give it [app-payments-kit](https://github.com/yuvarajsalla20/app-payments-kit), or any object with the same few functions (`PaymentsLike` in `src/payments.ts`). For the full App Store Connect, RevenueCat and EAS setup, follow the Subscriptions and Payments Playbook in the app's `runbooks/` folder.
 
@@ -26,7 +26,7 @@ Tools that work alongside them: [code-review-kit](https://github.com/yuvarajsall
 ```jsonc
 // package.json
 "dependencies": {
-  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v7.0.0>",
+  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v8.0.0>",
   "app-payments-kit": "git+https://github.com/yuvarajsalla20/app-payments-kit.git#<full SHA of v2.10.0>"
 },
 "kitVersions": {
@@ -55,7 +55,7 @@ The Premium page works best with app-payments-kit **2.10.0** or later, which tel
 | `<PlansScreen>` | Store prices, per-month price and savings, trial wording only when the store offers one, a tab per paid tier, Restore, codes, Manage, auto-renew wording, terms and privacy links |
 | `<FloatingCrown>` | A gold crown that floats over the app's main pages and opens the Plans screen. It can be dragged anywhere, settles on the nearest side edge and keeps its place between launches. Only a free account sees it, once the subscription is known; it never shows to a member, during a trial or in a store grace period. It hides while the Premium page is open |
 | `<CompareTable>` | Free vs paid tiers, one column per tier |
-| `<SubscriptionStatusCard>`, `statusLines()` | "You have Premium", the plan, and Renews or Ends |
+| `<YourPlanCard>`, `yourPlanLines()` | 8.0.0: the first card on the Subscription page: the plan the account holds, its status, the next date with the price, and the billing store. `<SubscriptionStatusCard>` is deprecated and draws it for a paid account |
 | `<SubscriptionRow>` | A compact Settings row: tier, renew or end date, Manage, code, Restore, and the developer tester switch |
 | `<PremiumGate>`, `<PremiumPill>`, `<LockBadge>`, `<PlanBadge>` | A locked card in place of a feature, the crowned tier pill, the lock badge, and a pill with the account's plan ("Monthly", "Yearly" or "Free") |
 | `planLabel()`, `usePlanLabel()` | The same plan word as text |
@@ -166,10 +166,11 @@ Keep the limits that matter on the server too (app-payments-kit's `has_tier()` i
 
 What it shows:
 
-- **Free:** a Get Premium card with store prices ("From $3.99/month", "Or $29.99/year"), See Plans, Restore Purchases and Redeem a Code.
-- **Renewing:** the status card, **Included With Premium**, **Your Plan** (Change Plan, to a longer plan only, with its saving, and Restore Purchases), then **Cancel Subscription** last as a quiet red row, with "You keep Premium Monthly until …" under it.
+- **Every account, first (8.0.0):** the **Your Plan** card. Free: "Free" and "Your account is on the Free plan, which includes every free feature." Paid: the plan (e.g., "Premium Monthly"), a badge (Active, Free Trial or Ending), "Renews on Dec 23, 2026 for $3.99 a month." or the trial end or end date, and Billed Through App Store or Google Play.
+- **Free:** then a Get Premium card with store prices ("From $3.99/month", "Or $29.99/year"), See Plans, Restore Purchases and Redeem a Code.
+- **Renewing:** **Included With Premium**, **Manage** (Change Plan, to a longer plan only, with its saving, and Restore Purchases), then **Cancel Subscription** last as a quiet red row, with "You keep Premium Monthly until …" under it.
 - **Before You Go:** what is lost, the stay offer when there is one, a switch to the longer plan, Keep Premium, and Continue to Cancel.
-- **After a cancel:** Ends and "Auto-renew is off", then **Your Plan** with **Renew Subscription** ("Keep Premium Monthly beyond Dec 12, 2026").
+- **After a cancel:** the card reads Ending and the end date, then **Manage** with **Renew Subscription** ("Keep Premium Monthly beyond Dec 12, 2026").
 - **After the store's sheet closes:** "Updating Your Subscription…" while the store is asked again. A change then shows "You're All Set!" or "Subscription Updated"; with no change the box closes quietly after a moment, and a late change is still confirmed.
 - **Right after a first purchase:** a Welcome to Premium card.
 

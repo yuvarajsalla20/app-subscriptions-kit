@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Pressable, Text } from 'react-native';
-import { Crowns, DEFAULT_STRINGS, PlanBadge, PremiumPill, PremiumPage, SubscriptionProvider, SETTLE_MS, UNCONFIRMED_MS, UPDATED_MS, defineSubscription, statusLines, useSubscription } from '../src';
+import { Crowns, DEFAULT_STRINGS, yourPlanLines, PlanBadge, PremiumPill, PremiumPage, SubscriptionProvider, SETTLE_MS, UNCONFIRMED_MS, UPDATED_MS, defineSubscription, statusLines, useSubscription } from '../src';
 import { act, fakePayments, mount, plan, press } from './render';
 
 const config = defineSubscription({
@@ -53,6 +53,11 @@ describe('PremiumPage', () => {
     const onOpenPlans = vi.fn();
     const m = await mount(page(fakePayments(), onOpenPlans));
     expect(m.shown('You Have Premium')).toBe(false);
+    // 8.0.0: the Your Plan card comes first and names the free plan.
+    expect(m.shown(DEFAULT_STRINGS.yourPlan)).toBe(true);
+    expect(m.shown('Free')).toBe(true);
+    expect(m.shown(DEFAULT_STRINGS.freePlanLine('Free'))).toBe(true);
+    expect(m.texts().indexOf(DEFAULT_STRINGS.yourPlan)).toBeLessThan(m.texts().indexOf('Get Premium'));
     expect(m.shown('Get Premium')).toBe(true);
     expect(m.shown('From $6.99/month')).toBe(true);
     expect(m.shown('$6.99/month or $39.99/year')).toBe(true);
@@ -66,14 +71,16 @@ describe('PremiumPage', () => {
     expect(m.shown(DEFAULT_STRINGS.premiumSettings('Premium'))).toBe(false);
   });
 
-  it('paid (5.0.0): status card, every feature under Included With Premium with no switch, then Your Plan, then Cancel last', async () => {
+  it('paid (8.0.0): Your Plan card, every feature under Included With Premium with no switch, then Manage, then Cancel last', async () => {
     const payments = fakePayments();
     const onChange = vi.fn();
     const m = await mount(page(payments, vi.fn(), onChange));
     await act(async () => payments.emit(renewing));
-    expect(m.shown('You Have Premium')).toBe(true);
-    expect(m.shown('Monthly Plan')).toBe(true);
-    expect(m.texts().some((t) => t.startsWith('Renews '))).toBe(true);
+    expect(m.shown(DEFAULT_STRINGS.yourPlan)).toBe(true);
+    expect(m.shown('Premium Monthly')).toBe(true);
+    expect(m.shown(DEFAULT_STRINGS.planActive)).toBe(true);
+    expect(m.texts().some((t) => t.startsWith('Renews on ') && t.endsWith('.'))).toBe(true);
+    expect(m.shown(DEFAULT_STRINGS.manageHeading)).toBe(true);
     expect(m.shown('Included With Premium')).toBe(true);
     expect(m.shown('Premium Settings')).toBe(false);
     expect(m.shown('Background Effects')).toBe(true);
@@ -377,7 +384,6 @@ describe('PremiumPage', () => {
     );
     await act(async () => payments.emit(renewing));
     await act(async () => { await switchTo(); });
-    expect(m.texts().some((t) => t.startsWith('→ Switching to Yearly on '))).toBe(true);
     expect(m.texts().some((t) => t.startsWith('Yearly Starts '))).toBe(true);
     expect(m.shown('Save 52%')).toBe(false);
   });
@@ -400,8 +406,8 @@ describe('PremiumPage', () => {
     const payments = fakePayments();
     const m = await mount(page(payments, vi.fn(), vi.fn(), { loseList: ['Data Export'] }));
     await act(async () => payments.emit(ended));
-    expect(m.texts().some((t) => t.startsWith('Ends '))).toBe(true);
-    expect(m.shown(DEFAULT_STRINGS.endsNote)).toBe(true);
+    expect(m.texts().some((t) => t.startsWith('Premium ends on ') && t.includes('will not renew'))).toBe(true);
+    expect(m.shown(DEFAULT_STRINGS.planEnding)).toBe(true);
     expect(m.shown('• Data Export')).toBe(true);
     await press(m.button(DEFAULT_STRINGS.renewSubscription));
     expect(payments.openManage).toHaveBeenCalled();
@@ -477,7 +483,7 @@ describe('PremiumPage', () => {
     expect(m.shown('Welcome to Premium')).toBe(true);
     await press(m.button(DEFAULT_STRINGS.startExploring));
     expect(m.shown('Welcome to Premium')).toBe(false);
-    expect(m.shown('You Have Premium')).toBe(true);
+    expect(m.shown(DEFAULT_STRINGS.yourPlan)).toBe(true);
   });
 
   it('7.0.0 Page rule: a switch or an editor passed to the Premium page is not drawn and is named in development', async () => {
@@ -495,5 +501,40 @@ describe('PremiumPage', () => {
     expect(warn.mock.calls.some(([w]) => String(w).includes('Page rule'))).toBe(true);
     delete (globalThis as { __DEV__?: boolean }).__DEV__;
     warn.mockRestore();
+  });
+});
+
+describe('yourPlanLines (8.0.0)', () => {
+  const store = [plan('monthly', 'premium', 3.99, 1), plan('yearly', 'premium', 29.99, 12)];
+  const base = { tier: 'premium', tierLabel: 'Premium', paid: true, config, server: null, source: 'store' as const };
+  const at = new Date('2026-11-23T12:00:00Z');
+
+  it('a free account: the free plan and one line, no badge and no store', () => {
+    const l = yourPlanLines({ ...base, tier: 'free', tierLabel: 'Free', paid: false, renewal: null }, store, DEFAULT_STRINGS, at);
+    expect(l).toEqual({ title: 'Free', badge: '', line: 'Your account is on the Free plan, which includes every free feature.', billedBy: '', note: '' });
+  });
+
+  it('renewing: the plan, Active, the date with the store price, and the billing store', () => {
+    const l = yourPlanLines({ ...base, renewal: { until: '2026-12-23T12:00:00Z', willRenew: true, productId: 'x_monthly', billedBy: 'google_play' } }, store, DEFAULT_STRINGS, at);
+    expect(l.title).toBe('Premium Monthly');
+    expect(l.badge).toBe('Active');
+    expect(l.line).toMatch(/^Renews on .*2026 for \$3\.99 a month\.$/);
+    expect(l.billedBy).toBe('Google Play');
+  });
+
+  it('a free trial says when it ends and what follows; an ending plan says it will not renew', () => {
+    const trial = yourPlanLines({ ...base, renewal: { until: '2026-11-30T12:00:00Z', willRenew: true, productId: 'x_yearly', trial: true, billedBy: 'app_store' } }, store, DEFAULT_STRINGS, at);
+    expect(trial.badge).toBe('Free Trial');
+    expect(trial.line).toMatch(/^Your free trial ends on .*2026\. Premium Yearly then renews for \$29\.99 a year\.$/);
+    expect(trial.billedBy).toBe('App Store');
+    const ending = yourPlanLines({ ...base, renewal: { until: '2026-12-23T12:00:00Z', willRenew: false, productId: 'x_monthly' } }, store, DEFAULT_STRINGS, at);
+    expect(ending.badge).toBe('Ending');
+    expect(ending.line).toMatch(/^Premium ends on .*2026 and will not renew\. Every Premium feature remains available until then\.$/);
+  });
+
+  it('leaves the price out when the store has not given it, and names a payment problem', () => {
+    const l = yourPlanLines({ ...base, renewal: { until: '2026-12-23T12:00:00Z', willRenew: true, productId: 'x_monthly', billingIssue: true } }, [], DEFAULT_STRINGS, at);
+    expect(l.line).toMatch(/^Renews on .*2026\.$/);
+    expect(l.note).toBe(DEFAULT_STRINGS.graceNote);
   });
 });
