@@ -22,7 +22,7 @@ describe('a new account never sees the last one', () => {
       return null;
     }
     const ui = (uid: string) => (
-      <SubscriptionProvider config={config} payments={payments} userId={uid}>
+      <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId={uid}>
         <Probe />
       </SubscriptionProvider>
     );
@@ -45,7 +45,7 @@ describe('a new account never sees the last one', () => {
       return null;
     }
     await mount(
-      <SubscriptionProvider config={config} payments={payments} userId="u1">
+      <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId="u1">
         <Probe />
       </SubscriptionProvider>,
     );

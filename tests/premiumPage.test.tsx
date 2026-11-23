@@ -41,7 +41,7 @@ describe('PremiumPage', () => {
     { key: 'sounds', label: 'More Alert Sounds', detail: '7 extra sounds' },
   ];
   const page = (payments = fakePayments(), onOpenPlans = vi.fn(), onChange = vi.fn(), extra: Record<string, unknown> = {}) => (
-    <SubscriptionProvider config={config} payments={payments} userId="u1">
+    <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId="u1">
       <PremiumPage onOpenPlans={onOpenPlans} features={features(onChange)} {...extra} />
     </SubscriptionProvider>
   );
@@ -109,7 +109,7 @@ describe('PremiumPage', () => {
     const withLink = [{ key: 'export', label: 'Data Export', detail: 'CSV or PDF', onPress: onOpen }];
     const payments = fakePayments();
     const m = await mount(
-      <SubscriptionProvider config={config} payments={payments} userId="u1">
+      <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId="u1">
         <PremiumPage onOpenPlans={onOpenPlans} features={withLink} />
       </SubscriptionProvider>,
     );
@@ -207,7 +207,7 @@ describe('PremiumPage', () => {
   it('PlanBadge names the plan once paid, Free otherwise', async () => {
     const payments = fakePayments();
     const m = await mount(
-      <SubscriptionProvider config={config} payments={payments} userId="u1">
+      <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId="u1">
         <PlanBadge />
       </SubscriptionProvider>,
     );
@@ -219,7 +219,7 @@ describe('PremiumPage', () => {
 
   it('PremiumPill has the crowns and the tier name by default', async () => {
     const m = await mount(
-      <SubscriptionProvider config={config} payments={fakePayments()} userId="u1">
+      <SubscriptionProvider planMode="subscription" config={config} payments={fakePayments()} userId="u1">
         <PremiumPill label="Premium" />
       </SubscriptionProvider>,
     );
@@ -260,7 +260,7 @@ describe('PremiumPage', () => {
       expect(payments.refresh).not.toHaveBeenCalled();
       // Leaving Settings and coming back (the app's provider stays): the line is still there and the store is asked again.
       const shell = (show: boolean) => (
-        <SubscriptionProvider config={config} payments={payments} userId="u1">
+        <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId="u1">
           {show ? <PremiumPage onOpenPlans={vi.fn()} features={features()} beforeCancel={false} /> : null}
         </SubscriptionProvider>
       );
@@ -377,7 +377,7 @@ describe('PremiumPage', () => {
     let switchTo: () => Promise<unknown> = async () => undefined;
     const Grab = () => { const sub = useSubscription(); switchTo = () => sub.switchPlan(plan('yearly', 'premium', 39.99, 12)); return null; };
     const m = await mount(
-      <SubscriptionProvider config={config} payments={payments} userId="u1">
+      <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId="u1">
         <Grab />
         <PremiumPage onOpenPlans={vi.fn()} features={features()} />
       </SubscriptionProvider>,
@@ -474,7 +474,7 @@ describe('PremiumPage', () => {
       return <Pressable onPress={() => sub.buy(plan('monthly', 'premium', 6.99, 1))}><Text>Buy</Text></Pressable>;
     };
     const m = await mount(
-      <SubscriptionProvider config={config} payments={payments} userId="u1">
+      <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId="u1">
         <Buy />
         <PremiumPage onOpenPlans={vi.fn()} features={features()} />
       </SubscriptionProvider>,
@@ -492,7 +492,7 @@ describe('PremiumPage', () => {
     const withSwitch = [{ key: 'effects', label: 'Background Effects', toggle: { value: true, onChange: vi.fn() } }] as never;
     const payments = fakePayments();
     const m = await mount(
-      <SubscriptionProvider config={config} payments={payments} userId="u1">
+      <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId="u1">
         <PremiumPage onOpenPlans={vi.fn()} features={withSwitch} />
       </SubscriptionProvider>,
     );

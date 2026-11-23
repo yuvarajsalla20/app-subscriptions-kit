@@ -11,7 +11,9 @@ import { useSubscription, type SubscriptionState } from './SubscriptionProvider'
  */
 export function PremiumPill({ tier, label, lock, ...look }: LookProps & { tier?: string; label?: string; lock?: boolean }) {
   const { c, Text } = useLook(look);
-  const { config } = useSubscription();
+  const { config, selling } = useSubscription();
+  // 9.0.0: no Premium pill while nothing is on sale.
+  if (!selling) return null;
   const name = label ?? config.tierLabels[tier ?? config.tiers[1]!] ?? '';
   if (lock) {
     return (
@@ -32,6 +34,8 @@ export function PremiumPill({ tier, label, lock, ...look }: LookProps & { tier?:
 /** A round lock badge for cards and icons. */
 export function LockBadge({ size = 36, ...look }: LookProps & { size?: number }) {
   const { c } = useLook(look);
+  // 9.0.0: nothing is locked while nothing is on sale.
+  if (!useSubscription().selling) return null;
   return (
     <View accessibilityElementsHidden importantForAccessibility="no" style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c.premium, alignItems: 'center', justifyContent: 'center' }}>
       <Lock color={c.onPremium} size={size * 0.45} />

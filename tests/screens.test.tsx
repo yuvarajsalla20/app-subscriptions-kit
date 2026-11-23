@@ -17,7 +17,7 @@ const config = defineSubscription({
 });
 const legal = { onOpenTerms: () => undefined, onOpenPrivacy: () => undefined };
 const app = (ui: React.ReactNode, payments = fakePayments(), c: SubscriptionConfig = config, grownUpCheck?: () => Promise<boolean>) => (
-  <SubscriptionProvider config={c} payments={payments} userId="u1" grownUpCheck={grownUpCheck}>
+  <SubscriptionProvider planMode="subscription" config={c} payments={payments} userId="u1" grownUpCheck={grownUpCheck}>
     {ui}
   </SubscriptionProvider>
 );
@@ -111,7 +111,7 @@ describe('PlansScreen', () => {
       return <PlansScreen {...legal} currentPlanId="monthly" onSwitch={(p) => sub.switchPlan(p)} />;
     };
     const payments = fakePayments();
-    const wrap = (ui: React.ReactNode) => <SubscriptionProvider config={config} payments={payments} userId="u1" storage={storage}>{ui}</SubscriptionProvider>;
+    const wrap = (ui: React.ReactNode) => <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId="u1" storage={storage}>{ui}</SubscriptionProvider>;
     const m = await mount(wrap(<Switcher />));
     await payments.emit(monthly);
     await press(m.label('Switch to Yearly'));
@@ -143,7 +143,7 @@ describe('PlansScreen', () => {
       return <PlansScreen {...legal} currentPlanId="monthly" onSwitch={(p) => sub.switchPlan(p)} />;
     };
     const payments = fakePayments();
-    const wrap = (ui: React.ReactNode) => <SubscriptionProvider config={config} payments={payments} userId="u1" storage={storage}>{ui}</SubscriptionProvider>;
+    const wrap = (ui: React.ReactNode) => <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId="u1" storage={storage}>{ui}</SubscriptionProvider>;
     const m = await mount(wrap(<Switcher />));
     await payments.emit(monthly);
     await press(m.label('Switch to Yearly'));
@@ -179,7 +179,7 @@ describe('PlansScreen', () => {
     const storage = { getItem: vi.fn(async (k: string) => saved.get(k) ?? null), setItem: vi.fn(async (k: string, v: string) => { saved.set(k, v); }), removeItem: vi.fn(async (k: string) => { saved.delete(k); }) };
     const payments = fakePayments();
     const Switcher = () => <PlansScreen {...legal} currentPlanId="monthly" onSwitch={vi.fn()} />;
-    const wrap = (uid: string) => <SubscriptionProvider config={config} payments={payments} userId={uid} storage={storage}><Switcher /></SubscriptionProvider>;
+    const wrap = (uid: string) => <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId={uid} storage={storage}><Switcher /></SubscriptionProvider>;
     const m = await mount(wrap('u1'));
     await payments.emit({ tier: 'premium', renewal: { until: '2099-12-12T10:00:00Z', willRenew: false, productId: 'app_monthly' } });
     await act(async () => { m.root.update(wrap('u2')); });

@@ -12,7 +12,7 @@ const config = defineSubscription({
   ],
 });
 const app = (ui: React.ReactNode, payments = fakePayments(), userId: string | null | 'loading' = 'u1') => (
-  <SubscriptionProvider config={config} payments={payments} userId={userId === 'loading' ? undefined : userId}>
+  <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId={userId === 'loading' ? undefined : userId}>
     {ui}
   </SubscriptionProvider>
 );

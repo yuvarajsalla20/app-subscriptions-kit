@@ -2,6 +2,19 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 9.0.0
+
+**Plan mode: free or subscription.** An app can now run with nothing on sale, and that is the default. The owner turns selling on with `planMode: "subscription"` in the Firestore document `config/app`, with no new build.
+
+- **New `planMode` on `SubscriptionProvider`.** Leave it out, or pass `'free'`, and nothing is sold. Pass `firestorePlanMode(db)` from the new `app-subscriptions-kit/firestore` entry to read `config/app` once per launch. Until it answers, and whenever it cannot be read, the app stays free.
+- **`subscriptionTesters`.** A list of account ids in `config/app`. While it lists anyone, subscription mode reaches only those accounts.
+- **In free mode every feature is open.** `usePremium().premium` is true for everyone, and `canUse()`, `isAtLeast()`, `limit()` and `allowed()` answer as the highest tier. `paid` and `tier` still describe what the account holds. The store is not asked.
+- **In free mode no crown, Premium pill or lock.** `FloatingCrown`, `PremiumPill` and `LockBadge` draw nothing; `PremiumGate` shows its content.
+- **New `planMode` and `selling`** on `useSubscription()`, **`planMode`** on `usePremium()`, and `usePlanMode()`, `getPlanMode()`, `setPlanMode()` and `planModeFrom()`. The mode is shared with app-account-kit 9.0.0 and app-settings-kit 18.0.0.
+- `firebase` is an optional peer dependency, needed only for `app-subscriptions-kit/firestore`.
+
+Upgrading: an app that sells keeps selling only after the owner sets `planMode: "subscription"` in `config/app` and the app passes `planMode={firestorePlanMode(db)}`. Without both, the app is free. This is a major version.
+
 ## 8.0.0
 
 **The Subscription page names the plan the account holds.** The page listed what Premium offers but never said which plan the person was on. It now opens with the Your Plan card in every app.

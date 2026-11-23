@@ -2,7 +2,7 @@
 
 The subscription pattern for React Native and Expo apps (iOS, Android and web): one config for tiers, features and limits; checks such as `canUse()` and `limit()`; a `useSubscription()` hook; and themeable screens that follow the App Store and Google Play rules: the Plans screen, the Free vs paid table, a complete Premium page for Settings, lock badges and plan pills.
 
-**Current version: 8.0.0** (tag `v8.0.0`)
+**Current version: 9.0.0** (tag `v9.0.0`)
 
 It never talks to a store. Give it [app-payments-kit](https://github.com/yuvarajsalla20/app-payments-kit), or any object with the same few functions (`PaymentsLike` in `src/payments.ts`). For the full App Store Connect, RevenueCat and EAS setup, follow the Subscriptions and Payments Playbook in the app's `runbooks/` folder.
 
@@ -26,22 +26,46 @@ Tools that work alongside them: [code-review-kit](https://github.com/yuvarajsall
 ```jsonc
 // package.json
 "dependencies": {
-  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v8.0.0>",
+  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v9.0.0>",
   "app-payments-kit": "git+https://github.com/yuvarajsalla20/app-payments-kit.git#<full SHA of v2.10.0>"
 },
 "kitVersions": {
-  "app-subscriptions-kit": "v5.0.0",
+  "app-subscriptions-kit": "v9.0.0",
   "app-payments-kit": "v2.10.0"
 }
 ```
 
-Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Find a SHA with `git ls-remote https://github.com/yuvarajsalla20/app-subscriptions-kit refs/tags/v5.0.0`.
+Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Find a SHA with `git ls-remote https://github.com/yuvarajsalla20/app-subscriptions-kit refs/tags/v9.0.0`.
 
 **Peer dependencies:** `react` ≥ 18, `react-native` ≥ 0.74, `react-native-svg` ≥ 13 (Expo apps install it with `npx expo install react-native-svg`).
 
 The Premium page works best with app-payments-kit **2.10.0** or later, which tells the page when the store has answered and also shows the loader when the person returns from the Google Play page.
 
 1.23.0 works best with app-payments-kit **2.7.0** or later (payment problems from the store, trial lengths in months, the last known tier offline). Older payments kits still work; those parts then simply don't show.
+
+## Plan mode: free or subscription (9.0.0)
+
+Every app runs in one of two plan modes, which the owner chooses in the Firestore document `config/app`, with no new build:
+
+| `config/app` field | Value | What the app does |
+|---|---|---|
+| `planMode` | `"free"`, or missing (the default) | Nothing is sold. Every feature is open to everyone; the store is never asked; no crown, Premium tag, padlock or paywall shows; Settings shows **Plan · Free**, a row with no page (app-settings-kit 18.0.0) |
+| `planMode` | `"subscription"` | The plans are on sale: the Subscription row and page, Plans, the crown, the Premium tags and the locks |
+| `subscriptionTesters` | a list of account ids, e.g., `["abc123"]` | Optional. While it lists anyone, `"subscription"` reaches only those accounts, so a test never reaches customers. Empty or missing: every account |
+
+Any other value, or a document that cannot be read, keeps the app free. Wire it once in the app:
+
+```tsx
+import { firestorePlanMode } from 'app-subscriptions-kit/firestore';
+
+const PLAN_MODE = firestorePlanMode(db); // read once per launch
+
+<SubscriptionProvider planMode={PLAN_MODE} config={SUBSCRIPTION} payments={payments} userId={userId}>
+```
+
+Without `planMode`, the provider is free. In free mode `usePremium().premium` is true for everyone and `canUse()`, `isAtLeast()`, `limit()` and `allowed()` answer as the highest tier; `paid` and `tier` still say what the account really holds. `planMode` and `selling` are on `useSubscription()`, and `usePlanMode()` gives the mode to any component (app-account-kit keeps the same shared value).
+
+When the mode changes, nothing is erased. A person who subscribed while selling was on keeps the store subscription, which the store bills until they cancel it; in free mode the app treats everyone alike.
 
 ## What you get
 
