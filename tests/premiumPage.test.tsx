@@ -272,25 +272,13 @@ describe('PremiumPage', () => {
     }
   });
 
-  it('quietAfterStore: no loader and no calm line after the store closes, but a later change is still confirmed', async () => {
-    vi.useFakeTimers();
-    try {
-      const calm = DEFAULT_STRINGS.notConfirmedYet('Apple');
-      const payments = fakePayments();
-      const m = await mount(page(payments, vi.fn(), vi.fn(), { beforeCancel: false, quietAfterStore: true }));
-      await act(async () => payments.emit(renewing));
-      await press(m.button(DEFAULT_STRINGS.cancelSubscription));
-      expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(false);
-      await act(async () => { await vi.advanceTimersByTimeAsync(21_000); });
-      expect(m.shown(calm)).toBe(false);
-      expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(false);
-      // The store answers late: the page still says the change went through.
-      await act(async () => payments.emit(ended));
-      expect(m.shown(DEFAULT_STRINGS.subscriptionUpdated)).toBe(true);
-      expect(m.shown(calm)).toBe(false);
-    } finally {
-      vi.useRealTimers();
-    }
+  it('shows the loader after the store closes in every app: quietAfterStore is gone (4.0.0)', async () => {
+    const payments = fakePayments();
+    // An app that still passes the old option gets the loader anyway.
+    const m = await mount(page(payments, vi.fn(), vi.fn(), { beforeCancel: false, ...({ quietAfterStore: true } as object) }));
+    await act(async () => payments.emit(renewing));
+    await press(m.button(DEFAULT_STRINGS.cancelSubscription));
+    expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(true);
   });
 
   it('Before You Go: what is lost, the stay offer, Keep Premium and Continue to Cancel', async () => {

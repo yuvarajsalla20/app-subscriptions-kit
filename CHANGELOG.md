@@ -2,6 +2,13 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 4.0.0
+
+**The Premium page always shows "Updating Your Subscription…" after the store's manage screen.** The option that turned it off, `quietAfterStore`, is removed. With it on, the page stayed as it was after Apple's sheet closed and then changed by itself a few seconds later, which left people unsure whether their change had worked. The loader now shows in every app, from the moment the store's screen closes until the change appears (up to 20 seconds), followed by "Subscription Updated" or "You're All Set!".
+
+- **Android too.** With app-payments-kit 2.10.0 or later, the same loader shows when the person returns from the Google Play page.
+- To adopt: remove `quietAfterStore` from `<PremiumPage>` and pin app-payments-kit 2.10.0. No wording changes.
+
 ## 3.1.0
 
 **A floating Premium crown, always in view.** New `FloatingCrown`: a gold crown that floats over the app's main pages and opens the Plans screen with one tap.
