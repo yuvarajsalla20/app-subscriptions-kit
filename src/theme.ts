@@ -247,22 +247,28 @@ export interface SubscriptionStrings {
   yourPlan: string;
   /** 8.0.0: the heading over Change Plan and Restore Purchases once the account pays (was "Your Plan" before 8.0.0). */
   manageHeading: string;
-  /** 8.0.0: the Your Plan card for a free account: "Your account is on the Free plan, which includes every free feature." */
-  freePlanLine: (freeLabel: string) => string;
-  /** 8.0.0: the badge on the Your Plan card. */
+  /** 11.0.0: the Your Plan card's title for a free account: "Free Plan". */
+  freePlanTitle: (freeLabel: string) => string;
+  /** 11.0.0: the colored line for a free account, or a paid plan with no end date. */
+  yourCurrentPlan: string;
+  /** 11.0.0: the quieter line for a free account. */
+  freeIncluded: string;
+  /** The badge on the Your Plan card. */
   planActive: string;
   planTrial: string;
   planEnding: string;
-  /** 8.0.0: "Renews on Dec 23, 2026 for $3.99 a month." The price is left out when the store has not given it. */
-  renewsLine: (date: string, price: string) => string;
-  /** 8.0.0: "Your free trial ends on Nov 30, 2026. Premium Yearly then renews for $29.99 a year." */
-  trialEndsLine: (date: string, planName: string, price: string) => string;
-  /** 8.0.0: "Premium ends on Dec 23, 2026 and will not renew. Every Premium feature remains available until then." */
-  endsLine: (tierLabel: string, date: string) => string;
-  /** 8.0.0: a paid plan with no end date: "Every Premium feature is included." */
+  /** 11.0.0: the colored line: "Renews Dec 23, 2026", "Free Trial Ends Nov 30, 2026", "Ends Dec 23, 2026". */
+  renewsOnDate: (date: string) => string;
+  trialEndsOn: (date: string) => string;
+  endsOn: (date: string) => string;
+  /** 11.0.0: the quieter line once auto-renew is off: "Auto-renew is off. Premium stays until then." */
+  endingDetail: (tierLabel: string) => string;
+  /** 11.0.0: after a free trial: "Then $29.99/year." */
+  thenPriceShort: (priceWithPer: string) => string;
+  /** 11.0.0: "Billed through the App Store." or "Billed through Google Play." */
+  billedThroughStore: (platform: StorePlatform) => string;
+  /** A paid plan with no end date: "Every Premium feature is included." */
   allIncludedLine: (tierLabel: string) => string;
-  /** 8.0.0: the last line of the Your Plan card, beside the store's name. */
-  billedThrough: string;
   /** 5.0.0: the line under the included list naming the features whose settings live in Preferences. */
   setInPreferences: (labels: readonly string[]) => string;
   /** The floating crown, for screen readers (4.0.0): "Premium" for a free account, "Premium Member" once paid. */
@@ -396,15 +402,19 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   includedWith: (t) => `Included With ${t}`,
   yourPlan: 'Your Plan',
   manageHeading: 'Manage',
-  freePlanLine: (f) => `Your account is on the ${f} plan, which includes every free feature.`,
+  freePlanTitle: (f) => `${f} Plan`,
+  yourCurrentPlan: 'Your Current Plan',
+  freeIncluded: 'Every free feature is included.',
   planActive: 'Active',
-  planTrial: 'Free Trial',
+  planTrial: 'Trial',
   planEnding: 'Ending',
-  renewsLine: (d, p) => (p ? `Renews on ${d} for ${p}.` : `Renews on ${d}.`),
-  trialEndsLine: (d, plan, p) => `Your free trial ends on ${d}. ${plan} then renews${p ? ` for ${p}` : ''}.`,
-  endsLine: (t, d) => `${t} ends on ${d} and will not renew. Every ${t} feature remains available until then.`,
+  renewsOnDate: (d) => `Renews ${d}`,
+  trialEndsOn: (d) => `Free Trial Ends ${d}`,
+  endsOn: (d) => `Ends ${d}`,
+  endingDetail: (t) => `Auto-renew is off. ${t} stays until then.`,
+  thenPriceShort: (p) => `Then ${p}.`,
+  billedThroughStore: (p) => (p === 'ios' ? 'Billed through the App Store.' : p === 'android' ? 'Billed through Google Play.' : 'Billed through the web.'),
   allIncludedLine: (t) => `Every ${t} feature is included.`,
-  billedThrough: 'Billed Through',
   setInPreferences: (l) => {
     const names = l.length > 1 ? `${l.slice(0, -1).join(', ')} and ${l[l.length - 1]}` : l[0] ?? '';
     return `${names} ${l.length > 1 ? 'are' : 'is'} set in Settings, under Preferences.`;
