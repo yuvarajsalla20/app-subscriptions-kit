@@ -1,8 +1,9 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * 9.0.0: whether a plan is on sale in this app. `'free'` (the default) sells nothing: every feature is open to everyone, and
- * no Premium tag, padlock, crown or paywall shows. `'subscription'` shows today's Subscription page, Plans and locks.
+ * 9.0.0: whether a plan is on sale in this app. `'free'` (the default) sells nothing. 10.0.0: every Premium feature is then
+ * hidden (no row, option, tag, padlock, crown or paywall), and only the free features show. `'subscription'` shows today's
+ * Subscription page, Plans, Premium tags and locks.
  *
  * The owner chooses it per app with `planMode` in the Firestore document `config/app`; `SubscriptionProvider` reads it and
  * sets it here. app-account-kit keeps an identical store under the same global key, so every kit (its Premium tag, and
@@ -48,6 +49,20 @@ const subscribe = (l: () => void) => {
 /** The plan mode, kept in step. */
 export function usePlanMode(): PlanMode {
   return useSyncExternalStore(subscribe, getPlanMode, getPlanMode);
+}
+
+/**
+ * 10.0.0: whether Premium is offered at all: true only while the plan mode is `'subscription'`. While it is `'free'`, every
+ * Premium feature is hidden: no row, option, tag, padlock, crown or paywall, so the app reads as complete without it.
+ */
+export const usePremiumOffered = (): boolean => usePlanMode() === 'subscription';
+
+/**
+ * 10.0.0: the options to offer. While Premium is not offered, a locked option is left out, except the one already chosen, so
+ * existing data still reads correctly; it then shows without a padlock.
+ */
+export function offeredOptions<T>(items: readonly T[], offered: boolean, isLocked: (item: T) => boolean, isChosen: (item: T) => boolean): readonly T[] {
+  return offered ? items : items.filter((it) => !isLocked(it) || isChosen(it));
 }
 
 /**

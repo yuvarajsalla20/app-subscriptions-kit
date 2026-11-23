@@ -2,7 +2,7 @@
 
 The subscription pattern for React Native and Expo apps (iOS, Android and web): one config for tiers, features and limits; checks such as `canUse()` and `limit()`; a `useSubscription()` hook; and themeable screens that follow the App Store and Google Play rules: the Plans screen, the Free vs paid table, a complete Premium page for Settings, lock badges and plan pills.
 
-**Current version: 9.0.0** (tag `v9.0.0`)
+**Current version: 10.0.0** (tag `v10.0.0`)
 
 It never talks to a store. Give it [app-payments-kit](https://github.com/yuvarajsalla20/app-payments-kit), or any object with the same few functions (`PaymentsLike` in `src/payments.ts`). For the full App Store Connect, RevenueCat and EAS setup, follow the Subscriptions and Payments Playbook in the app's `runbooks/` folder.
 
@@ -26,16 +26,16 @@ Tools that work alongside them: [code-review-kit](https://github.com/yuvarajsall
 ```jsonc
 // package.json
 "dependencies": {
-  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v9.0.0>",
+  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v10.0.0>",
   "app-payments-kit": "git+https://github.com/yuvarajsalla20/app-payments-kit.git#<full SHA of v2.10.0>"
 },
 "kitVersions": {
-  "app-subscriptions-kit": "v9.0.0",
+  "app-subscriptions-kit": "v10.0.0",
   "app-payments-kit": "v2.10.0"
 }
 ```
 
-Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Find a SHA with `git ls-remote https://github.com/yuvarajsalla20/app-subscriptions-kit refs/tags/v9.0.0`.
+Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Find a SHA with `git ls-remote https://github.com/yuvarajsalla20/app-subscriptions-kit refs/tags/v10.0.0`.
 
 **Peer dependencies:** `react` ≥ 18, `react-native` ≥ 0.74, `react-native-svg` ≥ 13 (Expo apps install it with `npx expo install react-native-svg`).
 
@@ -49,7 +49,7 @@ Every app runs in one of two plan modes, which the owner chooses in the Firestor
 
 | `config/app` field | Value | What the app does |
 |---|---|---|
-| `planMode` | `"free"`, or missing (the default) | Nothing is sold. Every feature is open to everyone; the store is never asked; no crown, Premium tag, padlock or paywall shows; Settings shows **Plan · Free**, a row with no page (app-settings-kit 18.0.0) |
+| `planMode` | `"free"`, or missing (the default) | Nothing is sold, and every Premium feature is hidden (10.0.0): no Premium row, option, tag, padlock, crown or paywall, so the app reads as complete with its free features. The store is never asked. Settings shows **Plan · Free**, a row with no page (app-settings-kit 18.0.0) |
 | `planMode` | `"subscription"` | The plans are on sale: the Subscription row and page, Plans, the crown, the Premium tags and the locks |
 | `subscriptionTesters` | a list of account ids, e.g., `["abc123"]` | Optional. While it lists anyone, `"subscription"` reaches only those accounts, so a test never reaches customers. Empty or missing: every account |
 
@@ -63,9 +63,9 @@ const PLAN_MODE = firestorePlanMode(db); // read once per launch
 <SubscriptionProvider planMode={PLAN_MODE} config={SUBSCRIPTION} payments={payments} userId={userId}>
 ```
 
-Without `planMode`, the provider is free. In free mode `usePremium().premium` is true for everyone and `canUse()`, `isAtLeast()`, `limit()` and `allowed()` answer as the highest tier; `paid` and `tier` still say what the account really holds. `planMode` and `selling` are on `useSubscription()`, and `usePlanMode()` gives the mode to any component (app-account-kit keeps the same shared value).
+Without `planMode`, the provider is free. In free mode (10.0.0) the account counts as free: `usePremium().premium` is false, and `canUse()`, `isAtLeast()`, `limit()` and `allowed()` answer as the free tier. `usePremium().offered` and `usePremiumOffered()` are false, and an app hides each Premium feature it gates in its own code; `offeredOptions()` filters a list of choices the same way as the kits' menus, keeping the option already chosen. `PremiumGate` draws nothing. `planMode` and `selling` are on `useSubscription()`, and `usePlanMode()` gives the mode to any component (app-account-kit keeps the same shared value).
 
-When the mode changes, nothing is erased. A person who subscribed while selling was on keeps the store subscription, which the store bills until they cancel it; in free mode the app treats everyone alike.
+When the mode changes, nothing is erased. Data that already uses a Premium option keeps working, and the option stays visible where it is chosen. A person who subscribed while selling was on keeps the store subscription, which the store bills until they cancel it; in free mode the app treats everyone alike, so subscribe only with test accounts while the mode is not final.
 
 ## What you get
 

@@ -1,7 +1,7 @@
 export { defineSubscription, type CompareRow, type LimitValue, type PlanConfig, type SubscriptionConfig, type SubscriptionConfigInput } from './define';
 export { allowed, atLeast, canUse, limitFor, rank, tierAllowing, tierFor } from './rules';
 export { isPlan, money, months, offerSaving, perMonth, savings } from './pricing';
-export { DEFAULT_PLAN_MODE, getPlanMode, planModeFrom, setPlanMode, usePlanMode, type PlanMode, type PlanModeSource } from './planMode';
+export { DEFAULT_PLAN_MODE, getPlanMode, offeredOptions, planModeFrom, setPlanMode, usePlanMode, usePremiumOffered, type PlanMode, type PlanModeSource } from './planMode';
 export { SubscriptionProvider, usePremium, useSubscription, useTier, type PendingSwitch, type SubscriptionProviderProps, type SubscriptionState, type SubscriptionStorage } from './SubscriptionProvider';
 export { LockBadge, PlanBadge, PremiumGate, PremiumPill, planLabel, usePlanLabel } from './badges';
 export { Swing, UpdatingBox, useReduceMotion, type UpdatingDone } from './Updating';
