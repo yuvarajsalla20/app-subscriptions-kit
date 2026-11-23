@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Platform, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { Crowns, useLook, type LookProps } from './look';
 import type { StorePlan } from './payments';
 import { isPlan } from './pricing';
@@ -16,22 +17,38 @@ export interface YourPlanCardProps extends LookProps {
 
 /** What the card says, worked out from the subscription. Exported for tests and for screen readers. */
 export interface YourPlanLines {
-  /** "Free", "Premium Monthly" or "Premium Yearly". */
+  /** "Free Plan", "Premium Monthly" or "Premium Yearly". */
   title: string;
   /** "Active", "Free Trial" or "Ending"; empty for a free account. */
   badge: string;
-  /** One calm sentence: the renewal, the trial end or the end date, with the price when the store gives it. */
-  line: string;
-  /** "App Store" or "Google Play" for a paid plan; empty for a free account. */
-  billedBy: string;
+  /** The colored line: "Your Current Plan", "Renews Dec 23, 2026", "Free Trial Ends Nov 30, 2026" or "Ends Dec 23, 2026". */
+  status: string;
+  /** True when the plan will not renew: the status line takes the Premium color instead of the accent. */
+  ending: boolean;
+  /** The quieter line: what is included, or the price and the store ("$3.99/month. Billed through the App Store."). */
+  detail: string;
   /** A payment problem, said in full; empty when there is none. */
   note: string;
 }
 
+/** The free plan's mark: a shield with a check, drawn in the accent color. */
+function Shield({ color, size = 24 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden importantForAccessibility="no">
+      <Path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+      <Path d="M8.8 12.2l2.2 2.2 4.2-4.4" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+/** A soft wash of a hex color (e.g., the accent at 10%), for the card's fill and border. Other color forms are used as given. */
+const wash = (color: string, alpha: string) => (/^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color);
+
 /**
  * 8.0.0: the first card on the Subscription page, the same in every app. It says which plan the account holds, so a person
- * never has to work it out from the comparison. Free: the free plan's name and one line. Paid: the plan's name, a badge (Active,
- * Free Trial or Ending), when it renews or ends with the store's price, and the store that bills it. Buying stays on Plans.
+ * never has to work it out from the comparison. 11.0.0: drawn in the same pattern as the Get Premium card (a round mark on
+ * the left, a bold title, a colored line and a quieter line), in the calm accent color, so Get Premium remains the card that
+ * leads on a free account. Paid: a small badge (Active, Free Trial or Ending), the date, the store's price and the store.
  */
 export function YourPlanCard({ icon, plans: given, ...look }: YourPlanCardProps) {
   const { c, s, Text } = useLook(look);
@@ -46,37 +63,30 @@ export function YourPlanCard({ icon, plans: given, ...look }: YourPlanCardProps)
   }, [given, sub.paid, sub.ready]);
   const plans = given ?? loaded;
   const l = yourPlanLines(sub, plans, s);
-  const premium = sub.paid;
-  const said = [s.yourPlan, l.title, l.badge, l.line, l.billedBy ? `${s.billedThrough} ${l.billedBy}` : '', l.note].filter(Boolean).join('. ');
+  const said = [s.yourPlan, l.title, l.badge, l.status, l.detail, l.note].filter(Boolean).join('. ');
+  const statusColor = l.ending ? c.premium : c.accent;
   return (
     <View
       accessible
       accessibilityLabel={said}
-      style={{ borderRadius: c.radius + 8, backgroundColor: c.surface, borderWidth: 1, borderColor: premium ? c.premium : c.border, overflow: 'hidden' }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: c.radius + 8, backgroundColor: c.surface, borderWidth: 1.5, borderColor: wash(c.accent, '8C'), overflow: 'hidden' }}
     >
-      <View style={{ padding: 18, gap: 10, backgroundColor: premium ? c.premiumSoft : c.surface }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 24 }}>
-          <Text style={{ color: c.muted, fontSize: 12, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase' }}>{s.yourPlan}</Text>
+      <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: wash(c.accent, '1A') }} />
+      <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.bg, alignItems: 'center', justifyContent: 'center' }}>
+        {sub.paid ? icon ?? <Crowns size={18} king={c.king} kingFill={c.kingFill} queen={c.queen} queenFill={c.queenFill} /> : <Shield color={c.accent} />}
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={{ flex: 1, color: c.text, fontSize: 18, fontWeight: '800' }}>{l.title}</Text>
           {l.badge ? (
-            <View style={{ backgroundColor: l.badge === s.planEnding ? c.border : c.premium, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
-              <Text style={{ color: l.badge === s.planEnding ? c.text : c.onPremium, fontSize: 12, fontWeight: '800' }}>{l.badge}</Text>
+            <View style={{ borderRadius: 10, borderWidth: 1, borderColor: wash(statusColor, '8C'), backgroundColor: c.bg, paddingHorizontal: 8, paddingVertical: 2 }}>
+              <Text style={{ color: statusColor, fontSize: 11, fontWeight: '800' }}>{l.badge}</Text>
             </View>
           ) : null}
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: premium ? c.surface : c.bg, borderWidth: premium ? 0 : 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center' }}>
-            {premium ? icon ?? <Crowns size={18} king={c.king} kingFill={c.kingFill} queen={c.queen} queenFill={c.queenFill} /> : <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: c.muted }} />}
-          </View>
-          <Text style={{ flex: 1, color: c.text, fontSize: 22, fontWeight: '800' }}>{l.title}</Text>
-        </View>
-        {l.line ? <Text style={{ color: c.muted, fontSize: 14, lineHeight: 20 }}>{l.line}</Text> : null}
-        {l.note ? <Text style={{ color: c.text, fontSize: 14, lineHeight: 20, fontWeight: '600' }}>{l.note}</Text> : null}
-        {l.billedBy ? (
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1, borderTopColor: c.border }}>
-            <Text style={{ color: c.muted, fontSize: 13 }}>{s.billedThrough}</Text>
-            <Text style={{ color: c.text, fontSize: 13, fontWeight: '700' }}>{l.billedBy}</Text>
-          </View>
-        ) : null}
+        <Text style={{ color: statusColor, fontSize: 14, fontWeight: '700' }}>{l.status}</Text>
+        {l.detail ? <Text style={{ color: c.muted, fontSize: 13 }}>{l.detail}</Text> : null}
+        {l.note ? <Text style={{ color: c.text, fontSize: 13, fontWeight: '600', marginTop: 4 }}>{l.note}</Text> : null}
       </View>
     </View>
   );
@@ -88,23 +98,24 @@ type Strings = ReturnType<typeof useLook>['s'];
 /** The words on the card, from the same rule as the rest of the page (`subscriptionTerms`). */
 export function yourPlanLines(sub: Pick<Sub, 'paid' | 'tierLabel' | 'tier' | 'config' | 'renewal' | 'server' | 'source'>, plans: readonly StorePlan[], s: Strings, now = new Date()): YourPlanLines {
   const free = sub.config.tierLabels[sub.config.tiers[0] ?? 'free'] ?? 'Free';
-  if (!sub.paid) return { title: free, badge: '', line: s.freePlanLine(free), billedBy: '', note: '' };
+  if (!sub.paid) return { title: s.freePlanTitle(free), badge: '', status: s.yourCurrentPlan, ending: false, detail: s.freeIncluded, note: '' };
   const t = subscriptionTerms({ server: sub.server, renewal: sub.renewal, source: sub.source, now });
   const product = sub.renewal?.productId?.toLowerCase() ?? '';
   const configPlan = product ? sub.config.plans.find((p) => isPlan(product, p.id)) : undefined;
   const store = product ? plans.find((p) => isPlan(product, p.id)) : undefined;
   const title = configPlan ? `${sub.tierLabel} ${configPlan.label}` : sub.tierLabel;
-  const price = store ? (store.period ? `${store.priceString} ${s.every(store.period.unit, store.period.count)}` : store.priceString) : '';
+  const price = store ? `${store.priceString}${store.period ? s.per(store.period.unit, store.period.count) : ''}` : '';
   const date = shortDay(t.until);
   const trial = !!sub.renewal?.trial;
   const badge = t.ending ? s.planEnding : trial ? s.planTrial : s.planActive;
-  const line = !date ? s.allIncludedLine(sub.tierLabel)
-    : t.ending ? s.endsLine(sub.tierLabel, date)
-    : trial ? s.trialEndsLine(date, title, price)
-    : s.renewsLine(date, price);
+  const status = !date ? s.yourCurrentPlan : t.ending ? s.endsOn(date) : trial ? s.trialEndsOn(date) : s.renewsOnDate(date);
   const billedBy = sub.renewal?.billedBy;
   const platform: StorePlatform | null =
     billedBy === 'app_store' ? 'ios' : billedBy === 'google_play' ? 'android' : billedBy === 'web' || billedBy === 'other' ? null
     : sub.renewal && (Platform.OS === 'ios' || Platform.OS === 'android') ? Platform.OS : null;
-  return { title, badge, line, billedBy: platform ? s.storeName(platform) : '', note: t.billingIssue ? s.graceNote : '' };
+  const where = platform ? s.billedThroughStore(platform) : '';
+  const detail = t.ending ? s.endingDetail(sub.tierLabel)
+    : !date ? s.allIncludedLine(sub.tierLabel)
+    : [price ? (trial ? s.thenPriceShort(price) : `${price}.`) : '', where].filter(Boolean).join(' ');
+  return { title, badge, status, ending: t.ending, detail, note: t.billingIssue ? s.graceNote : '' };
 }

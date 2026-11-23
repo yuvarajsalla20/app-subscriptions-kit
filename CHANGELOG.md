@@ -2,6 +2,18 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 11.0.0
+
+**The Your Plan card follows the Get Premium pattern.** It had a small caption, an empty circle and a long sentence, which read differently from the Get Premium card beneath it.
+
+- **One pattern.** A round mark on the left (a shield with a check for Free, the crowns for Premium), a bold title, a colored line and a quieter line, like Get Premium.
+- **A calm color.** The card is washed and outlined in the app's accent instead of gold, so Get Premium remains the card that leads on a free account.
+- **Shorter words.** Free: "Free Plan", "Your Current Plan" and "Every free feature is included." Paid: the plan's name with a small Active, Trial or Ending badge, "Renews Dec 23, 2026", "Free Trial Ends Nov 30, 2026" or "Ends Dec 23, 2026" (in the Premium color), then the price and the store, e.g., "$3.99/month. Billed through the App Store."
+- `yourPlanLines()` now returns `title`, `badge`, `status`, `ending`, `detail` and `note`.
+- New strings: `freePlanTitle`, `yourCurrentPlan`, `freeIncluded`, `renewsOnDate`, `trialEndsOn`, `endsOn`, `endingDetail`, `thenPriceShort` and `billedThroughStore`. Removed: `freePlanLine`, `renewsLine`, `trialEndsLine`, `endsLine` and `billedThrough`. `planTrial` is now "Trial".
+
+Upgrading: nothing to change in apps, unless an app reads `yourPlanLines()`. The card looks different, so this is a major version.
+
 ## 10.0.0
 
 **In free mode, Premium is hidden.** While the plan mode is `'free'` (the default), nothing hints that a Premium plan exists. Until now, free mode opened every Premium feature to everyone.
