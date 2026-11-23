@@ -248,6 +248,7 @@ export interface SubscriptionStrings {
   /** 5.0.0: the line under the included list naming the features whose settings live in Preferences. */
   setInPreferences: (labels: readonly string[]) => string;
   /** The floating crown, for screen readers (4.0.0): "Premium" for a free account, "Premium Member" once paid. */
+  /** The crown's name for screen readers. 6.0.0: only a free account sees the crown, so `member` is always false. */
   crownLabel: (member: boolean) => string;
   crownHint: string;
   featureCount: (n: number) => string;

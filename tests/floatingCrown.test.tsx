@@ -1,6 +1,6 @@
 import { PanResponder } from 'react-native';
 import { describe, expect, it, vi } from 'vitest';
-import { CROWN_KEY, DEFAULT_PLACE, FloatingCrown, PremiumPage, SubscriptionProvider, defineSubscription, placeAt, readPlace, settle } from '../src';
+import { CROWN_KEY, CROWN_SPACE, DEFAULT_PLACE, FloatingCrown, useCrownSpace, PremiumPage, SubscriptionProvider, defineSubscription, placeAt, readPlace, settle } from '../src';
 import { act, fakePayments, mount, press } from './render';
 
 const config = defineSubscription({ tiers: ['free', 'premium'], tierLabels: { premium: 'Premium' }, features: { effects: 'premium' }, plans: [{ id: 'yearly', tier: 'premium', label: 'Yearly' }] });
@@ -44,15 +44,48 @@ describe('FloatingCrown', () => {
     expect(readPlace('{"side":"left","at":0.25}')).toEqual({ side: 'left', at: 0.25 });
   });
 
-  it('opens the plans on a tap, for a free account and for a member', async () => {
+  it('opens the plans on a tap for a free account', async () => {
     const onPress = vi.fn();
-    const payments = fakePayments();
-    const m = await mount(crown(payments, onPress));
+    const m = await mount(crown(fakePayments(), onPress));
     await press(m.label('Premium'));
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides for a member, a trial and a store grace period, and returns when the plan ends (6.0.0)', async () => {
+    const payments = fakePayments();
+    const m = await mount(crown(payments));
+    expect(m.label('Premium')).toBeTruthy();
     await payments.emit({ tier: 'premium' });
-    await press(m.label('Premium Member'));
-    expect(onPress).toHaveBeenCalledTimes(2);
+    expect(m.label('Premium')).toBeUndefined();
+    await payments.emit({ tier: 'premium', renewal: { until: '2099-01-01T00:00:00Z', willRenew: true, trial: true } });
+    expect(m.label('Premium')).toBeUndefined();
+    await payments.emit({ tier: 'premium', renewal: { until: '2099-01-01T00:00:00Z', willRenew: true, billingIssue: true } });
+    expect(m.label('Premium')).toBeUndefined();
+    await payments.emit({ tier: 'free' });
+    expect(m.label('Premium')).toBeTruthy();
+  });
+
+  it('stays hidden until the subscription is known, so a member never sees it flash (6.0.0)', async () => {
+    let answer: (s: { tier: string; source: 'store'; server: null }) => void = () => undefined;
+    const payments = fakePayments({ watch: vi.fn((_: string | null, f) => ((answer = f), () => undefined)) });
+    const m = await mount(crown(payments));
+    expect(m.label('Premium')).toBeUndefined();
+    await act(async () => answer({ tier: 'premium', source: 'store', server: null }));
+    expect(m.label('Premium')).toBeUndefined();
+  });
+
+  it('leaves room under a list only while the crown is shown (6.0.0)', async () => {
+    const seen: number[] = [];
+    const Probe = () => (seen.push(useCrownSpace()), null);
+    const payments = fakePayments();
+    await mount(
+      <SubscriptionProvider config={config} payments={payments} userId="u1">
+        <Probe />
+      </SubscriptionProvider>,
+    );
+    expect(seen.at(-1)).toBe(CROWN_SPACE);
+    await payments.emit({ tier: 'premium' });
+    expect(seen.at(-1)).toBe(0);
   });
 
   it('keeps the place it was dragged to, and a small movement is not a drag', async () => {
