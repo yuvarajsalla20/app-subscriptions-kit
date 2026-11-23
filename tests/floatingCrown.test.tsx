@@ -1,6 +1,6 @@
 import { PanResponder } from 'react-native';
 import { describe, expect, it, vi } from 'vitest';
-import { CROWN_KEY, DEFAULT_PLACE, FloatingCrown, SubscriptionProvider, defineSubscription, placeAt, readPlace, settle } from '../src';
+import { CROWN_KEY, DEFAULT_PLACE, FloatingCrown, PremiumPage, SubscriptionProvider, defineSubscription, placeAt, readPlace, settle } from '../src';
 import { act, fakePayments, mount, press } from './render';
 
 const config = defineSubscription({ tiers: ['free', 'premium'], tierLabels: { premium: 'Premium' }, features: { effects: 'premium' }, plans: [{ id: 'yearly', tier: 'premium', label: 'Yearly' }] });
@@ -15,6 +15,20 @@ const crown = (payments = fakePayments(), onPress = vi.fn(), storage = memory())
 );
 
 describe('FloatingCrown', () => {
+  it('hides while the Premium page is open and returns once it closes (5.0.0)', async () => {
+    const payments = fakePayments();
+    const ui = (withPage: boolean) => (
+      <SubscriptionProvider config={config} payments={payments} userId="u1">
+        {withPage ? <PremiumPage onOpenPlans={vi.fn()} features={[]} /> : null}
+        <FloatingCrown onPress={vi.fn()} />
+      </SubscriptionProvider>
+    );
+    const m = await mount(ui(true));
+    expect(m.label('Premium')).toBeUndefined();
+    await act(async () => m.root.update(ui(false)));
+    expect(m.label('Premium')).toBeTruthy();
+  });
+
   it('settles on the nearest side edge, inside the free band', () => {
     expect(settle(40, 400, 390, 120, 810)).toEqual({ side: 'left', at: expect.closeTo(280 / 630, 5) });
     expect(settle(300, 2000, 390, 120, 810)).toEqual({ side: 'right', at: 1 });

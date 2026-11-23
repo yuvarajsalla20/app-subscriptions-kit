@@ -2,6 +2,19 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 5.0.0
+
+**The Premium page shows plan facts only.** A subscriber's page read as a mix of a settings list and a billing page: switches of different sizes, an editor inside the card, and a large red Cancel button louder than the status card. The page now has one purpose.
+
+- **Included With Premium.** Every feature in `features` is listed with a check, at one row size. A feature with `onPress` (e.g., Data Export) still opens its page. Nothing here switches or edits a setting.
+- **Settings live in Preferences.** `toggle` and `children` are deprecated and no longer drawn. Give each feature with settings a row or page in Preferences (app-account-kit 7.36.0 adds `toggle` to an extra page for a plain switch) and set the new `inPreferences`. One line under the list names them, e.g., "Background Effects, Falling Names and Workspaces are set in Settings, under Preferences."
+- **Your Plan, then Cancel last.** The heading over Change Plan and Restore Purchases is "Your Plan". Cancel Subscription moves to the end as a quiet red row in its own card, with "You keep Premium Monthly until …" beneath it. Before You Go is unchanged. After a cancel, Renew Subscription keeps its place under Your Plan.
+- **No floating crown on this page.** `FloatingCrown` hides while a `PremiumPage` is open; it covered the Save tag on Change Plan. New `usePremiumPageShown()`.
+- **A cleaner status card.** The gold wash now sits on the solid page surface, so background art no longer shows through it.
+- New strings: `includedWith`, `yourPlan` and `setInPreferences`. `premiumSettings` is deprecated and unused.
+
+Upgrading: move each switch and editor from `features` into Preferences, set `inPreferences: true` on those features, and pin app-account-kit 7.36.0 for switch rows there.
+
 ## 4.0.0
 
 **The Premium page always shows "Updating Your Subscription…" after the store's manage screen.** The option that turned it off, `quietAfterStore`, is removed. With it on, the page stayed as it was after Apple's sheet closed and then changed by itself a few seconds later, which left people unsure whether their change had worked. The loader now shows in every app, from the moment the store's screen closes until the change appears (up to 20 seconds), followed by "Subscription Updated" or "You're All Set!".

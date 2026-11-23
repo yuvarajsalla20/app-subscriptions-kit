@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, PanResponder, Pressable, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { useLook, type LookProps } from './look';
+import { usePremiumPageShown } from './pageOpen';
 import { useSubscription, type SubscriptionStorage } from './SubscriptionProvider';
 
 /** The crown's gold, light to deep: the same gold as the Premium tag and the comparison table. */
@@ -80,11 +81,13 @@ function CrownMark({ member, gold, ink, soft, size }: { member: boolean; gold: r
 /**
  * A gold crown that floats over the app's main pages and opens the Plans screen. The person can drag it anywhere; on release it
  * settles on the nearest side edge and the place is kept. A press that moves less than a few points is a tap.
- * Place it last inside a full-screen view. Lists under it end with `CROWN_SPACE` of room.
+ * Place it last inside a full-screen view. Lists under it end with `CROWN_SPACE` of room. 5.0.0: it hides while the Premium page
+ * is open, where it covered Change Plan and repeated what the page already says.
  */
 export function FloatingCrown({ onPress, storage, top = 120, bottom = 34, onLift, ...look }: FloatingCrownProps) {
   const { c, s } = useLook(look);
   const { paid } = useSubscription();
+  const premiumOpen = usePremiumPageShown();
   const { width, height } = useWindowDimensions();
   const low = height - bottom;
   const [place, setPlace] = useState<CrownPlace>(DEFAULT_PLACE);
@@ -135,6 +138,7 @@ export function FloatingCrown({ onPress, storage, top = 120, bottom = 34, onLift
   }
 
   const gold = c.crown ?? DEFAULT_GOLD;
+  if (premiumOpen) return null;
   return (
     <Animated.View
       {...pan.panHandlers}
