@@ -2,6 +2,15 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 7.0.0
+
+**The Premium page enforces the Page rule.** The page shows plan facts only, so it no longer accepts a switch or an editor.
+
+- **`toggle` and `children` are removed from `PremiumFeature`.** They were deprecated in 5.0.0 and not drawn. A feature that still passes one is named in a development warning, and it no longer counts as `inPreferences`.
+- Set `inPreferences: true` on each feature whose settings live in Preferences; the line under Included With Premium names it.
+
+Upgrading: remove `toggle` and `children` from `features` and set `inPreferences` instead. Nothing visible changes.
+
 ## 6.0.0
 
 **The floating crown shows only to free accounts.** A member already has Premium, so a crown that opened the Plans page again offered nothing and covered part of each page.
