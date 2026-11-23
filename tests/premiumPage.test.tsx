@@ -37,7 +37,7 @@ describe('statusLines', () => {
 
 describe('PremiumPage', () => {
   const features = (onChange = vi.fn()) => [
-    { key: 'effects', label: 'Background Effects', toggle: { value: true, onChange } },
+    { key: 'effects', label: 'Background Effects', inPreferences: true },
     { key: 'sounds', label: 'More Alert Sounds', detail: '7 extra sounds' },
   ];
   const page = (payments = fakePayments(), onOpenPlans = vi.fn(), onChange = vi.fn(), extra: Record<string, unknown> = {}) => (
@@ -478,5 +478,22 @@ describe('PremiumPage', () => {
     await press(m.button(DEFAULT_STRINGS.startExploring));
     expect(m.shown('Welcome to Premium')).toBe(false);
     expect(m.shown('You Have Premium')).toBe(true);
+  });
+
+  it('7.0.0 Page rule: a switch or an editor passed to the Premium page is not drawn and is named in development', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
+    const withSwitch = [{ key: 'effects', label: 'Background Effects', toggle: { value: true, onChange: vi.fn() } }] as never;
+    const payments = fakePayments();
+    const m = await mount(
+      <SubscriptionProvider config={config} payments={payments} userId="u1">
+        <PremiumPage onOpenPlans={vi.fn()} features={withSwitch} />
+      </SubscriptionProvider>,
+    );
+    await act(async () => payments.emit(renewing));
+    expect(m.shown('Background Effects')).toBe(true);
+    expect(warn.mock.calls.some(([w]) => String(w).includes('Page rule'))).toBe(true);
+    delete (globalThis as { __DEV__?: boolean }).__DEV__;
+    warn.mockRestore();
   });
 });

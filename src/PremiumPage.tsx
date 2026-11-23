@@ -25,10 +25,6 @@ export interface PremiumFeature {
    * included list names it. The Premium page shows plan facts only, never a switch or an editor.
    */
   inPreferences?: boolean;
-  /** @deprecated 5.0.0: not drawn on the Premium page. Put the switch in Preferences and set `inPreferences`. Still counts as `inPreferences`. */
-  toggle?: { value: boolean; onChange: (value: boolean) => void };
-  /** @deprecated 5.0.0: not drawn on the Premium page. Give the editor its own page in Preferences and set `inPreferences`. Still counts as `inPreferences`. */
-  children?: ReactNode;
   /** A feature that lives on another page (Data Export, in Account): once paid, a tap on its included row opens it. */
   onPress?: () => void;
 }
@@ -478,7 +474,12 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
   // 5.0.0: plan facts only. A subscriber sees every feature the plan includes, each with a check; nothing here switches or
   // edits a setting. Features whose settings live in Preferences are named in one line under the card. A free account sees
   // none here: the settings kit's comparison follows the page.
-  const inPrefs = features.filter((f) => f.inPreferences || f.toggle || f.children).map((f) => f.label);
+  const inPrefs = features.filter((f) => f.inPreferences).map((f) => f.label);
+  // 7.0.0 Page rule: the Premium page holds plan facts only. A switch or an editor passed here is refused and named in development.
+  const refused = features.filter((f) => 'toggle' in f || 'children' in f).map((f) => f.label).join(', ');
+  useEffect(() => {
+    if (refused && typeof __DEV__ !== 'undefined' && __DEV__) console.warn(`app-subscriptions-kit: ${refused} passed a switch or an editor to the Premium page, which shows plan facts only (Page rule). Put it in Preferences and set inPreferences.`);
+  }, [refused]);
   const list = paid && features.length ? (
     <>
       {heading(s.includedWith(tierLabel))}

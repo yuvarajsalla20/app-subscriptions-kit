@@ -2,7 +2,7 @@
 
 The subscription pattern for React Native and Expo apps (iOS, Android and web): one config for tiers, features and limits; checks such as `canUse()` and `limit()`; a `useSubscription()` hook; and themeable screens that follow the App Store and Google Play rules: the Plans screen, the Free vs paid table, a complete Premium page for Settings, lock badges and plan pills.
 
-**Current version: 6.0.0** (tag `v6.0.0`)
+**Current version: 7.0.0** (tag `v7.0.0`)
 
 It never talks to a store. Give it [app-payments-kit](https://github.com/yuvarajsalla20/app-payments-kit), or any object with the same few functions (`PaymentsLike` in `src/payments.ts`). For the full App Store Connect, RevenueCat and EAS setup, follow the Subscriptions and Payments Playbook in the app's `runbooks/` folder.
 
@@ -26,7 +26,7 @@ Tools that work alongside them: [code-review-kit](https://github.com/yuvarajsall
 ```jsonc
 // package.json
 "dependencies": {
-  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v6.0.0>",
+  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v7.0.0>",
   "app-payments-kit": "git+https://github.com/yuvarajsalla20/app-payments-kit.git#<full SHA of v2.10.0>"
 },
 "kitVersions": {
@@ -154,7 +154,7 @@ Keep the limits that matter on the server too (app-payments-kit's `has_tier()` i
 
 | Prop | Notes |
 |---|---|
-| `features` | `{ key, label, detail?, icon?, inPreferences?, onPress? }[]`. 5.0.0: a paid account sees every feature under **Included With Premium**, each with a check, and a tap on one with `onPress` opens its page. Nothing on this page switches or edits a setting: give a feature with settings a row or page in Preferences (app-account-kit's extra page, `under: 'app'`, with `toggle` for a switch) and set `inPreferences`, and the line under the list names it. `toggle` and `children` are deprecated and not drawn; they count as `inPreferences` |
+| `features` | `{ key, label, detail?, icon?, inPreferences?, onPress? }[]`. 7.0.0: `toggle` and `children` are removed; a feature that passes one is named in a development warning (Page rule). 5.0.0: a paid account sees every feature under **Included With Premium**, each with a check, and a tap on one with `onPress` opens its page. Nothing on this page switches or edits a setting: give a feature with settings a row or page in Preferences (app-account-kit's extra page, `under: 'app'`, with `toggle` for a switch) and set `inPreferences`, and the line under the list names it. |
 | `onOpenPlans` | Opens the Plans screen |
 | `onError` | Store failures, for crash reporting |
 | `icon` | The mark on the cards. Default `<Crowns>` |
@@ -238,6 +238,10 @@ npm test
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
+
+## Page rule
+
+Every page has one job, as set out in the shared [Page rule](https://github.com/yuvarajsalla20/app-settings-kit#page-rule-every-page-has-one-job). The Premium page shows plan facts only: status, Included With Premium, Your Plan and Cancel. The Plans screen is where a plan is compared and bought. A switch or an editor belongs in Preferences, never on either page.
 
 ## Writing rule
 
