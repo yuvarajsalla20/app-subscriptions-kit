@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, ActivityIndicator, Modal, Platform, Pressable, Switch, View } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Modal, Platform, Pressable, View } from 'react-native';
 import { Crowns, useLook, type LookProps } from './look';
 import { UpdatingBox, type UpdatingDone } from './Updating';
 import type { StoreOffer, StorePlan } from './payments';
@@ -9,8 +9,9 @@ import { SubscriptionStatusCard } from './StatusCard';
 import { useSubscription } from './SubscriptionProvider';
 import { DEFAULT_THEME, type StorePlatform } from './theme';
 import { SubscriptionRow } from './SubscriptionRow';
+import { usePremiumPageOpen } from './pageOpen';
 
-/** One feature on the Premium page. The app says what it is; the kit draws it locked, switched or included. */
+/** One feature on the Premium page. The app says what it is; 5.0.0: the kit lists it under Included With Premium. */
 export interface PremiumFeature {
   /** Unique within the page. */
   key: string;
@@ -19,14 +20,16 @@ export interface PremiumFeature {
   detail?: string;
   /** The app's icon (any element, such as a tinted tile). */
   icon?: ReactNode;
-  /** A feature with its own on/off switch once unlocked. Without it the row says "Included" once unlocked. */
-  toggle?: { value: boolean; onChange: (value: boolean) => void };
-  /** Shown under the row once unlocked (and switched on, for a feature with a switch): an editor, more rows. */
-  children?: ReactNode;
   /**
-   * A feature that lives on another page (Data Export, in Account): once unlocked, a tap opens it and the row shows an arrow after "Included".
-   * Locked, a tap still opens the plans. Not used on a row with a switch.
+   * 5.0.0: its settings live in Preferences (an app-account-kit extra page with `under: 'app'`), and the line under the
+   * included list names it. The Premium page shows plan facts only, never a switch or an editor.
    */
+  inPreferences?: boolean;
+  /** @deprecated 5.0.0: not drawn on the Premium page. Put the switch in Preferences and set `inPreferences`. Still counts as `inPreferences`. */
+  toggle?: { value: boolean; onChange: (value: boolean) => void };
+  /** @deprecated 5.0.0: not drawn on the Premium page. Give the editor its own page in Preferences and set `inPreferences`. Still counts as `inPreferences`. */
+  children?: ReactNode;
+  /** A feature that lives on another page (Data Export, in Account): once paid, a tap on its included row opens it. */
   onPress?: () => void;
 }
 
@@ -58,10 +61,11 @@ type RestoreState = 'idle' | 'checking' | 'allSet' | 'done' | 'none' | 'failed';
 
 /**
  * A whole Premium page for Settings, the same for every app: only the features, words, colors and icon are the app's.
- * Free: Get Premium, then See Plans, Restore Purchases and Redeem a Code. Paid: the status card, Premium Settings (the
- * features with their own controls), then Cancel Subscription (with Before You Go first), Change Plan (not on the longest
- * plan) and Restore Purchases. After a cancel: Ends, then Renew Subscription and what is lost, then Premium Settings. Right
- * after a purchase: a welcome card. 3.0.0: the Free and Premium comparison follows this page, drawn by app-settings-kit.
+ * Free: Get Premium, then See Plans, Restore Purchases and Redeem a Code. Paid (5.0.0, plan facts only): the status card,
+ * Included With Premium (every feature, with a check), Your Plan (Change Plan, not on the longest plan, and Restore Purchases),
+ * then Cancel Subscription last as a quiet red row (with Before You Go first). After a cancel: Your Plan with Renew
+ * Subscription and what is lost, then the included list. Right after a purchase: a welcome card. The Free and Premium
+ * comparison follows this page, drawn by app-settings-kit. While the page is open, the floating crown stays hidden.
  */
 /** A date that never breaks across two lines ("Nov 15, 2026", not "Nov 15," then "2026"). */
 const keepTogether = (date: string) => date.replace(/ /g, '\u00A0');
@@ -94,13 +98,14 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
   const { paid, config } = sub;
+  // 5.0.0: the floating crown hides while this page is open; it covered Change Plan and repeats what the page already says.
+  usePremiumPageOpen();
   // The server row only while it gives the tier, else the store; a date already past is left out (as on the status card).
   const terms = subscriptionTerms({ server: sub.server, renewal: sub.renewal, source: sub.source });
   const ending = terms.ending;
   const until = shortDay(terms.until);
   const fail = (e: unknown) => onError?.(e);
   const danger = c.danger ?? DEFAULT_THEME.danger!;
-  const onDanger = c.onDanger ?? DEFAULT_THEME.onDanger!;
   const success = c.success ?? DEFAULT_THEME.success!;
   const successSoft = c.successSoft ?? DEFAULT_THEME.successSoft!;
   const onTag = c.onTag ?? DEFAULT_THEME.onTag!;
@@ -429,7 +434,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
   } else {
     actions = (
       <>
-        {heading(s.subscription)}
+        {heading(s.yourPlan)}
         {terms.billingIssue ? (
           <View accessibilityLiveRegion="polite" style={{ padding: 12, borderRadius: c.radius, backgroundColor: c.warn }}>
             <Text style={{ color: c.text, fontSize: 14, lineHeight: 20 }}>{s.graceNote}</Text>
@@ -441,9 +446,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
             <Text style={{ flex: 1, color: c.text, fontSize: 14, lineHeight: 20 }}>{s.notConfirmedYet(s.storeCompany(platform))}</Text>
           </View>
         ) : null}
-        {ending
-          ? bigButton(s.renewSubscription, until ? s.continuesAfter(planName, keepTogether(until)) : '', c.accent, c.onAccent, manage)
-          : bigButton(s.cancelSubscription, until ? s.keepUntil(planName, keepTogether(until)) : '', danger, onDanger, hasSheet ? () => setSheet(true) : manage)}
+        {ending ? bigButton(s.renewSubscription, until ? s.continuesAfter(planName, keepTogether(until)) : '', c.accent, c.onAccent, manage) : null}
         {ending ? lose : null}
         <View style={card}>
           {/* On the longest plan there is nothing to move up to, so Change Plan is left out instead of opening an empty choice. */}
@@ -454,48 +457,57 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
               : null}
           {restoreRow()}
         </View>
+        {/* 5.0.0: Cancel is the last thing on the page, a quiet red row in its own card, with the end date under it. */}
+        {ending ? null : (
+          <View style={{ gap: 6 }}>
+            <View style={card}>
+              <Pressable accessibilityRole="button" accessibilityLabel={s.cancelSubscription} accessibilityHint={until ? s.keepUntil(planName, until) : undefined}
+                onPress={hasSheet ? () => setSheet(true) : manage}
+                style={({ pressed }) => [{ minHeight: 52, justifyContent: 'center', paddingHorizontal: 16 }, pressed ? { opacity: 0.6 } : null]}>
+                <Text style={{ color: danger, fontSize: 16, fontWeight: '600' }}>{s.cancelSubscription}</Text>
+              </Pressable>
+            </View>
+            {until ? <Text style={{ color: c.muted, fontSize: 13, lineHeight: 18, marginHorizontal: 16 }}>{s.keepUntil(planName, keepTogether(until))}</Text> : null}
+          </View>
+        )}
       </>
     );
   }
 
-  // ---- Premium Settings ----
-  // 3.0.0: the plan page in app-settings-kit (10.0.0) ends with its Free and Premium comparison, so this page no longer
-  // repeats the feature list. A subscriber sees only the features that have their own controls (a switch, an editor, a
-  // page to open), under Premium Settings; a free account sees none here.
-  const settable = paid ? features.filter((f) => f.toggle || f.children || f.onPress) : [];
-  const list = settable.length ? (
+  // ---- Included With Premium ----
+  // 5.0.0: plan facts only. A subscriber sees every feature the plan includes, each with a check; nothing here switches or
+  // edits a setting. Features whose settings live in Preferences are named in one line under the card. A free account sees
+  // none here: the settings kit's comparison follows the page.
+  const inPrefs = features.filter((f) => f.inPreferences || f.toggle || f.children).map((f) => f.label);
+  const list = paid && features.length ? (
     <>
-      {heading(s.premiumSettings(tierLabel))}
-      <View style={card}>
-        {settable.map((f, i) => {
-          const on = !f.toggle || f.toggle.value;
-          const press = f.toggle ? () => f.toggle!.onChange(!f.toggle!.value) : f.onPress;
-          return (
-            <View key={f.key} style={i ? line : undefined}>
-              <Pressable
-                onPress={press}
-                disabled={!press}
-                accessibilityRole={f.toggle ? 'switch' : 'button'}
-                accessibilityLabel={f.label}
-                accessibilityHint={!f.toggle && f.onPress ? s.opensPage : undefined}
-                accessibilityState={f.toggle ? { checked: f.toggle.value } : undefined}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16, minHeight: 56 }}
-              >
+      {heading(s.includedWith(tierLabel))}
+      <View style={{ gap: 6 }}>
+        <View style={card}>
+          {features.map((f, i) => {
+            const inner = (
+              <>
                 {f.icon ?? null}
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: c.text, fontSize: 16, fontWeight: '600' }}>{f.label}</Text>
                   {f.detail ? <Text style={{ color: c.muted, fontSize: 12, marginTop: 2 }}>{f.detail}</Text> : null}
                 </View>
-                {f.toggle ? (
-                  <Switch value={f.toggle.value} onValueChange={f.toggle.onChange} trackColor={{ true: c.accent, false: c.border }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
-                ) : f.onPress ? (
-                  <Text style={{ color: c.muted, fontSize: 20, lineHeight: 22 }} accessibilityElementsHidden importantForAccessibility="no">›</Text>
-                ) : null}
+                <Text style={{ color: f.onPress ? c.muted : c.accent, fontSize: f.onPress ? 20 : 17, fontWeight: '800' }} accessibilityElementsHidden importantForAccessibility="no">{f.onPress ? '›' : '✓'}</Text>
+              </>
+            );
+            const rowStyle = { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 12, paddingVertical: 8, paddingHorizontal: 16, minHeight: 52 };
+            const said = [f.label, f.detail, s.included].filter(Boolean).join('. ');
+            return f.onPress ? (
+              <Pressable key={f.key} onPress={f.onPress} accessibilityRole="button" accessibilityLabel={said} accessibilityHint={s.opensPage}
+                style={({ pressed }) => [rowStyle, i ? line : null, pressed ? { opacity: 0.6 } : null]}>
+                {inner}
               </Pressable>
-              {on && f.children ? <View style={{ paddingHorizontal: 16, paddingBottom: 14 }}>{f.children}</View> : null}
-            </View>
-          );
-        })}
+            ) : (
+              <View key={f.key} accessible accessibilityLabel={said} style={[rowStyle, i ? line : null]}>{inner}</View>
+            );
+          })}
+        </View>
+        {inPrefs.length ? <Text style={{ color: c.muted, fontSize: 13, lineHeight: 18, marginHorizontal: 16 }}>{s.setInPreferences(inPrefs)}</Text> : null}
       </View>
     </>
   ) : null;

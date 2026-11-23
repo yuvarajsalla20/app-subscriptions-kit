@@ -239,8 +239,14 @@ export interface SubscriptionStrings {
   saveTag: (pct: number) => string;
   /** The features header and its count. */
   premiumFeatures: (tierLabel: string) => string;
-  /** 3.0.0: the heading over the features a subscriber can switch or edit on the Premium page. */
+  /** @deprecated 5.0.0: no longer shown. The Premium page lists what is included; settings live in Preferences. */
   premiumSettings: (tierLabel: string) => string;
+  /** 5.0.0: the heading over everything a subscriber's plan includes: "Included With Premium". */
+  includedWith: (tierLabel: string) => string;
+  /** 5.0.0: the heading over Change Plan and Restore Purchases once the account pays. */
+  yourPlan: string;
+  /** 5.0.0: the line under the included list naming the features whose settings live in Preferences. */
+  setInPreferences: (labels: readonly string[]) => string;
   /** The floating crown, for screen readers (4.0.0): "Premium" for a free account, "Premium Member" once paid. */
   crownLabel: (member: boolean) => string;
   crownHint: string;
@@ -368,6 +374,12 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   saveTag: (n) => `Save ${n}%`,
   premiumFeatures: (t) => `${t} Features`,
   premiumSettings: (t) => `${t} Settings`,
+  includedWith: (t) => `Included With ${t}`,
+  yourPlan: 'Your Plan',
+  setInPreferences: (l) => {
+    const names = l.length > 1 ? `${l.slice(0, -1).join(', ')} and ${l[l.length - 1]}` : l[0] ?? '';
+    return `${names} ${l.length > 1 ? 'are' : 'is'} set in Settings, under Preferences.`;
+  },
   crownLabel: (member) => (member ? 'Premium Member' : 'Premium'),
   crownHint: 'Opens the plans. Drag to move it.',
   featureCount: (n) => (n === 1 ? '1 Feature' : `${n} Features`),

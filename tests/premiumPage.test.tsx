@@ -66,7 +66,7 @@ describe('PremiumPage', () => {
     expect(m.shown(DEFAULT_STRINGS.premiumSettings('Premium'))).toBe(false);
   });
 
-  it('paid: status card, Premium Settings holds only the features with controls, Change Plan shows the saving', async () => {
+  it('paid (5.0.0): status card, every feature under Included With Premium with no switch, then Your Plan, then Cancel last', async () => {
     const payments = fakePayments();
     const onChange = vi.fn();
     const m = await mount(page(payments, vi.fn(), onChange));
@@ -74,14 +74,26 @@ describe('PremiumPage', () => {
     expect(m.shown('You Have Premium')).toBe(true);
     expect(m.shown('Monthly Plan')).toBe(true);
     expect(m.texts().some((t) => t.startsWith('Renews '))).toBe(true);
-    expect(m.shown('Premium Settings')).toBe(true);
+    expect(m.shown('Included With Premium')).toBe(true);
+    expect(m.shown('Premium Settings')).toBe(false);
     expect(m.shown('Background Effects')).toBe(true);
-    // A perk with no switch, editor or page is not repeated here: the settings kit's comparison lists it.
-    expect(m.shown('More Alert Sounds')).toBe(false);
-    await press(m.label('Background Effects'));
-    expect(onChange).toHaveBeenCalledWith(false);
+    expect(m.shown('More Alert Sounds')).toBe(true);
+    expect(m.label('Background Effects. Included')).toBeTruthy();
+    // No switch on the plan page: the setting lives in Preferences, and the line under the list says so.
+    expect(m.root.root.findAll((n) => n.type === 'Switch')).toHaveLength(0);
+    expect(m.shown('Background Effects is set in Settings, under Preferences.')).toBe(true);
+    expect(m.shown('Your Plan')).toBe(true);
     expect(m.shown('Yearly · $39.99/year')).toBe(true);
     expect(m.shown('Save 52%')).toBe(true);
+    // Cancel comes after Change Plan and Restore Purchases, as a row, with the end date under it.
+    const t = m.texts();
+    expect(t.indexOf(DEFAULT_STRINGS.cancelSubscription)).toBeGreaterThan(t.indexOf(DEFAULT_STRINGS.restoreSubscription));
+    expect(t.lastIndexOf(DEFAULT_STRINGS.cancelSubscription)).toBe(t.indexOf(DEFAULT_STRINGS.cancelSubscription));
+    expect(t.indexOf('You keep Premium Monthly until Jan\u00A015,\u00A02099.')).toBeGreaterThan(t.indexOf(DEFAULT_STRINGS.cancelSubscription));
+  });
+
+  it('names several Preferences features in one line', () => {
+    expect(DEFAULT_STRINGS.setInPreferences(['Background Effects', 'Falling Names', 'Workspaces'])).toBe('Background Effects, Falling Names and Workspaces are set in Settings, under Preferences.');
   });
 
   it('a feature with onPress opens its page once paid, and is not shown before', async () => {
@@ -97,7 +109,7 @@ describe('PremiumPage', () => {
     expect(m.shown('Data Export')).toBe(false);
     await act(async () => payments.emit(renewing));
     expect(m.shown('CSV or PDF')).toBe(true);
-    await press(m.label('Data Export'));
+    await press(m.label('Data Export. CSV or PDF. Included'));
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 

@@ -20,8 +20,10 @@ export function SubscriptionStatusCard({ icon, ...look }: LookProps & { icon?: R
     <View
       accessible
       accessibilityLabel={[l.title, l.plan, switching, l.when, l.note].filter(Boolean).join('. ')}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: c.radius + 8, backgroundColor: c.premiumSoft, borderWidth: 1, borderColor: c.premium }}
+      style={{ borderRadius: c.radius + 8, backgroundColor: c.surface, borderWidth: 1, borderColor: c.premium, overflow: 'hidden' }}
     >
+      {/* 5.0.0: the gold wash sits on the page's solid surface, so the background art never shows through the card. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, backgroundColor: c.premiumSoft }}>
       <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}>
         {icon ?? <Crowns size={20} king={c.king} kingFill={c.kingFill} queen={c.queen} queenFill={c.queenFill} />}
       </View>
@@ -35,6 +37,7 @@ export function SubscriptionStatusCard({ icon, ...look }: LookProps & { icon?: R
           </View>
         ) : null}
         {l.note ? <Text style={{ color: c.muted, fontSize: 13 }}>{l.note}</Text> : null}
+      </View>
       </View>
     </View>
   );
