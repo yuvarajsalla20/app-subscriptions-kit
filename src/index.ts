@@ -8,7 +8,7 @@ export { CompareTable } from './CompareTable';
 export { PlansScreen, type PlansScreenProps } from './PlansScreen';
 export { SubscriptionRow } from './SubscriptionRow';
 export { SubscriptionStatusCard } from './StatusCard';
-export { PremiumPage, UNCONFIRMED_MS, UPDATED_MS, type PremiumFeature, type PremiumPageProps } from './PremiumPage';
+export { PremiumPage, SETTLE_MS, UNCONFIRMED_MS, UPDATED_MS, type PremiumFeature, type PremiumPageProps } from './PremiumPage';
 export { shortDay, statusLines, subscriptionTerms, type StatusLines, type SubscriptionTerms } from './status';
 export { DEFAULT_STRINGS, DEFAULT_THEME, type StorePlatform, type SubscriptionComponents, type SubscriptionStrings, type SubscriptionTheme } from './theme';
 export { Crowns, Diamond } from './look';
