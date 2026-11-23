@@ -6,8 +6,9 @@ Release notes for app-subscriptions-kit, newest first. Each version is tagged in
 
 **The Premium page always shows "Updating Your Subscription…" after the store's manage screen.** The option that turned it off, `quietAfterStore`, is removed. With it on, the page stayed as it was after Apple's sheet closed and then changed by itself a few seconds later, which left people unsure whether their change had worked. The loader now shows in every app, from the moment the store's screen closes until the change appears (up to 20 seconds), followed by "Subscription Updated" or "You're All Set!".
 
+- **No endless loader when nothing changed.** When the person closes the store's screen without a change, the loader shows for a moment (at least 1.5 seconds, `SETTLE_MS`) while the store is asked again, then closes quietly. The page keeps listening for 15 minutes, so a change the store passes on late still ends with "Subscription Updated". The "has not confirmed yet" line now shows only when the store itself takes longer than 20 seconds to answer.
 - **Android too.** With app-payments-kit 2.10.0 or later, the same loader shows when the person returns from the Google Play page.
-- To adopt: remove `quietAfterStore` from `<PremiumPage>` and pin app-payments-kit 2.10.0. No wording changes.
+- To adopt: remove `quietAfterStore` from `<PremiumPage>` and pin app-payments-kit 2.10.0, which tells the page when the store has answered. No wording changes.
 
 ## 3.1.0
 

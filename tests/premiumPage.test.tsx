@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Pressable, Text } from 'react-native';
-import { Crowns, DEFAULT_STRINGS, PlanBadge, PremiumPill, PremiumPage, SubscriptionProvider, UNCONFIRMED_MS, UPDATED_MS, defineSubscription, statusLines, useSubscription } from '../src';
+import { Crowns, DEFAULT_STRINGS, PlanBadge, PremiumPill, PremiumPage, SubscriptionProvider, SETTLE_MS, UNCONFIRMED_MS, UPDATED_MS, defineSubscription, statusLines, useSubscription } from '../src';
 import { act, fakePayments, mount, plan, press } from './render';
 
 const config = defineSubscription({
@@ -227,7 +227,9 @@ describe('PremiumPage', () => {
     vi.useFakeTimers();
     try {
       const calm = DEFAULT_STRINGS.notConfirmedYet('Apple');
-      const payments = fakePayments({ refresh: vi.fn(async () => undefined) });
+      // The store takes 25 seconds to answer after its screen closes.
+      const openManage = vi.fn(async (onClosed?: () => void) => { onClosed?.(); await new Promise((r) => setTimeout(r, 25_000)); });
+      const payments = fakePayments({ refresh: vi.fn(async () => undefined), openManage });
       const m = await mount(page(payments, vi.fn(), vi.fn(), { beforeCancel: false }));
       await act(async () => payments.emit(renewing));
       expect(m.shown(calm)).toBe(false);
@@ -257,9 +259,12 @@ describe('PremiumPage', () => {
       await act(async () => m.root.update(shell(true)));
       expect(m.shown(calm)).toBe(false);
       expect(payments.refresh).toHaveBeenCalledOnce();
-      // After Done with nothing changed, the line waits a while and then goes by itself.
+      // A slow store with nothing changed: the line waits a while and then goes by itself.
+      await act(async () => { await vi.advanceTimersByTimeAsync(5_000); }); // the first store call ends
       await press(m.button(DEFAULT_STRINGS.renewSubscription));
       await act(async () => { await vi.advanceTimersByTimeAsync(21_000); });
+      expect(m.shown(calm)).toBe(true);
+      await act(async () => { await vi.advanceTimersByTimeAsync(5_000); }); // the store answers: the line stays
       expect(m.shown(calm)).toBe(true);
       await act(async () => { await vi.advanceTimersByTimeAsync(UNCONFIRMED_MS); });
       expect(m.shown(calm)).toBe(false);
@@ -267,6 +272,35 @@ describe('PremiumPage', () => {
       await act(async () => m.root.update(shell(true)));
       expect(m.shown(calm)).toBe(false);
       expect(payments.refresh).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("closing the store's screen with nothing changed: the loader shows briefly, then closes quietly, and a late change still confirms", async () => {
+    vi.useFakeTimers();
+    try {
+      const calm = DEFAULT_STRINGS.notConfirmedYet('Apple');
+      const payments = fakePayments({ openManage: vi.fn(async (onClosed?: () => void) => { onClosed?.(); await new Promise((r) => setTimeout(r, 800)); }) });
+      const m = await mount(page(payments, vi.fn(), vi.fn(), { beforeCancel: false }));
+      await act(async () => payments.emit(renewing));
+      await press(m.button(DEFAULT_STRINGS.cancelSubscription));
+      expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(true);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+      expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(true); // never just a flash
+      await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+      expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(false);
+      await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+      expect(m.shown(calm)).toBe(false);
+      expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(false);
+      // The store passes a cancel on late: the page still says the change went through.
+      await act(async () => payments.emit(ended));
+      expect(m.shown(DEFAULT_STRINGS.subscriptionUpdated)).toBe(true);
+      expect(m.shown(calm)).toBe(false);
+      // The next time, the loader shows again.
+      await act(async () => { await vi.advanceTimersByTimeAsync(3_000); });
+      await press(m.button(DEFAULT_STRINGS.renewSubscription));
+      expect(m.shown(DEFAULT_STRINGS.updatingSubscription)).toBe(true);
     } finally {
       vi.useRealTimers();
     }
@@ -345,6 +379,7 @@ describe('PremiumPage', () => {
     await act(async () => { cancel.props.onPress(); cancel.props.onPress(); });
     expect(payments.openManage).toHaveBeenCalledOnce();
     await act(async () => close());
+    await act(async () => { await new Promise((r) => setTimeout(r, SETTLE_MS + 50)); }); // the loader's shortest time
     await press(m.button(DEFAULT_STRINGS.cancelSubscription));
     expect(payments.openManage).toHaveBeenCalledTimes(2);
   });

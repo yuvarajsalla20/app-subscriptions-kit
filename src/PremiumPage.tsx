@@ -67,6 +67,11 @@ type RestoreState = 'idle' | 'checking' | 'allSet' | 'done' | 'none' | 'failed';
 const keepTogether = (date: string) => date.replace(/ /g, '\u00A0');
 /** How long "Updating Your Subscription…" may show when nothing changes (the store's manage screen was closed as it was). */
 const UPDATING_MS = 20_000;
+/**
+ * The shortest time "Updating Your Subscription…" shows. Once the store has been asked after its screen closed and nothing
+ * changed (most often the screen was closed as it was), the box closes after this, so it never flashes and never stays.
+ */
+export const SETTLE_MS = 1_500;
 /** How long the box says what changed before it closes by itself. */
 export const UPDATED_MS = 2_200;
 /**
@@ -75,6 +80,8 @@ export const UPDATED_MS = 2_200;
  */
 let unconfirmedFrom: string | null = null;
 let unconfirmedAt = 0;
+/** True while the page listens for a late change without showing the calm line (the store found nothing changed). */
+let unconfirmedQuiet = false;
 /** How long the calm line may wait. Past this (also after Done with nothing changed) it goes, so it never stays for good. */
 export const UNCONFIRMED_MS = 15 * 60_000;
 /** The waiting state if it is still fresh; an old one is dropped. */
@@ -117,6 +124,8 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
   const [updated, setUpdated] = useState<UpdatingDone | null>(null);
   // After "Updating…" gave up waiting: a calm line until the store shows the change. Survives leaving the page (see unconfirmedFrom).
   const [waitingFrom, setWaitingFrom] = useState<string | null>(() => (stillUnconfirmed() === stateKey ? stateKey : null));
+  // Listening without the calm line: the store was asked after its screen closed and nothing had changed.
+  const [quiet, setQuiet] = useState(() => unconfirmedQuiet);
   const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guards that read now, not at the last render: two quick taps never start two store calls.
   const restoreBusy = useRef(false);
@@ -192,8 +201,12 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
       return;
     }
     const t = setTimeout(() => {
+      // Already closed quietly: the store answered and nothing had changed.
+      if (unconfirmedQuiet && unconfirmedFrom === updatingFrom) return;
       unconfirmedFrom = updatingFrom;
       unconfirmedAt = Date.now();
+      unconfirmedQuiet = false;
+      setQuiet(false);
       setWaitingFrom(updatingFrom);
       setUpdatingFrom(null);
     }, UPDATING_MS);
@@ -317,17 +330,35 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
 
   const manage = () => oneAtATime(async () => {
     const before = stateNow.current;
-    // "Updating…" from the moment the store's screen closes, unless the change is already here. It stays until the change shows,
-    // then the page and "You're All Set!" change together.
+    // "Updating…" from the moment the store's screen closes, unless the change is already here. 4.0.0: shown in every app, since a
+    // page that stayed still and then changed by itself left people unsure what happened.
+    let shownAt = 0;
     const wait = () => {
-      // 4.0.0: always shown, in every app. A page that stayed still and then changed by itself left people unsure what happened.
-      if (!alive.current || stateNow.current !== before) return;
+      if (!alive.current || shownAt || stateNow.current !== before) return;
+      shownAt = Date.now();
       unconfirmedFrom = null;
+      unconfirmedQuiet = false;
+      setQuiet(false);
       setWaitingFrom(null);
       setUpdatingFrom(before);
     };
+    // openManage returns once the store has been asked again after its screen closed (Apple's sheet, or the person's return
+    // from the store's page).
     await sub.openManage(wait);
     wait(); // app-payments-kit before 2.5.0 does not say when the screen closed
+    // A change shows here: the page and "You're All Set!" or "Subscription Updated" change together (the effect above).
+    // Nothing changed: most often the screen was closed as it was. After SETTLE_MS the box closes quietly, and the page keeps
+    // listening for 15 minutes, so a change the store passes on late still ends with the usual confirmation.
+    await new Promise((r) => setTimeout(r, Math.max(0, shownAt + SETTLE_MS - Date.now())));
+    if (!alive.current || stateNow.current !== before) return;
+    // The store took longer than UPDATING_MS to answer: the calm line has already taken over and stays.
+    if (unconfirmedFrom === before && !unconfirmedQuiet) return;
+    unconfirmedFrom = before;
+    unconfirmedAt = Date.now();
+    unconfirmedQuiet = true;
+    setQuiet(true);
+    setWaitingFrom(before);
+    setUpdatingFrom(null);
   });
   const updating = (
     <UpdatingBox
@@ -404,7 +435,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
             <Text style={{ color: c.text, fontSize: 14, lineHeight: 20 }}>{s.graceNote}</Text>
           </View>
         ) : null}
-        {waitingFrom !== null ? (
+        {waitingFrom !== null && !quiet ? (
           <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: c.radius, backgroundColor: infoSoft }}>
             <ActivityIndicator size="small" color={info} />
             <Text style={{ flex: 1, color: c.text, fontSize: 14, lineHeight: 20 }}>{s.notConfirmedYet(s.storeCompany(platform))}</Text>

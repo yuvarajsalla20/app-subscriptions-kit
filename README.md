@@ -39,7 +39,7 @@ Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Fi
 
 **Peer dependencies:** `react` ≥ 18, `react-native` ≥ 0.74, `react-native-svg` ≥ 13 (Expo apps install it with `npx expo install react-native-svg`).
 
-4.0.0 works best with app-payments-kit **2.10.0** or later, which also shows the loader when the person returns from the Google Play page.
+4.0.0 works best with app-payments-kit **2.10.0** or later, which tells the page when the store has answered and also shows the loader when the person returns from the Google Play page.
 
 1.23.0 works best with app-payments-kit **2.7.0** or later (payment problems from the store, trial lengths in months, the last known tier offline). Older payments kits still work; those parts then simply don't show.
 
@@ -170,7 +170,7 @@ What it shows:
 - **Renewing:** the status card, Premium Settings, **Cancel Subscription** ("You keep Premium until …"), Change Plan (to a longer plan only, with its saving) and Restore Purchases.
 - **Before You Go:** what is lost, the stay offer when there is one, a switch to the longer plan, Keep Premium, and Continue to Cancel.
 - **After a cancel:** Ends and "Auto-renew is off", then **Renew Subscription** ("Keep Premium Monthly beyond Dec 12, 2026").
-- **After the store's sheet closes:** "Updating Your Subscription…" until the change shows, then "You're All Set!" or "Subscription Updated".
+- **After the store's sheet closes:** "Updating Your Subscription…" while the store is asked again. A change then shows "You're All Set!" or "Subscription Updated"; with no change the box closes quietly after a moment, and a late change is still confirmed.
 - **Right after a first purchase:** a Welcome to Premium card.
 
 ## `FloatingCrown`
