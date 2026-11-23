@@ -43,12 +43,12 @@ export interface SubscriptionStorage {
 export interface SubscriptionState {
   config: SubscriptionConfig;
   /**
-   * 9.0.0: `'free'` (the default) while nothing is on sale: every feature is open to everyone (`canUse`, `isAtLeast`, `limit`
-   * and `allowed` answer as the highest tier), the store is not asked, and no crown, Premium pill or paywall shows. `'subscription'`
-   * is the setup with plans on sale. `tier` and `paid` always describe what the account really holds.
+   * 9.0.0: `'free'` (the default) while nothing is on sale: the store is not asked, and no crown, Premium pill or paywall
+   * shows. 10.0.0: the account counts as free (`canUse`, `isAtLeast`, `limit` and `allowed` answer as the free tier) and every
+   * Premium feature is hidden, so nothing is offered. `'subscription'` is the setup with plans on sale.
    */
   planMode: PlanMode;
-  /** 9.0.0: true while a plan is on sale (`planMode` is `'subscription'`). */
+  /** 9.0.0: true while a plan is on sale (`planMode` is `'subscription'`). 10.0.0: while false, hide every Premium feature. */
   selling: boolean;
   /** The account's tier now: 'free', 'premium', 'pro' … */
   tier: string;
@@ -115,8 +115,8 @@ export interface SubscriptionProviderProps {
   /** Keeps a booked plan switch between launches (AsyncStorage). Without it the switch shows until the app closes. */
   storage?: SubscriptionStorage;
   /**
-   * 9.0.0: whether a plan is on sale. Leave out, or pass `'free'`, and nothing is sold: every feature is open and no crown, tag
-   * or paywall shows. Pass `firestorePlanMode(db)` from `app-subscriptions-kit/firestore` so the owner chooses it with
+   * 9.0.0: whether a plan is on sale. Leave out, or pass `'free'`, and nothing is sold: no crown, tag or paywall shows, and
+   * (10.0.0) every Premium feature is hidden. Pass `firestorePlanMode(db)` from `app-subscriptions-kit/firestore` so the owner chooses it with
    * `planMode` (and `subscriptionTesters`) in the Firestore document `config/app`, with no new build. Until the answer
    * arrives, and whenever it cannot be read, the app stays free.
    */
@@ -226,8 +226,8 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
 
   const value = useMemo<SubscriptionState>(() => {
     const tier = config.tiers.includes(state.tier) ? state.tier : 'free';
-    // 9.0.0: in free mode every check answers as the highest tier, so every feature is open to everyone.
-    const open = selling ? tier : config.tiers[config.tiers.length - 1] ?? tier;
+    // 10.0.0: in free mode the store is not asked, so the account is on the free tier and every check answers as that tier.
+    const open = tier;
     return {
       config,
       planMode: mode,
@@ -287,10 +287,10 @@ export function useSubscription(): SubscriptionState {
 export const useTier = (): string => useSubscription().tier;
 
 /**
- * For apps with one paid tier: { premium, loading }. 9.0.0: `premium` is true for everyone while the plan mode is `'free'`, so
- * every Premium feature is open; `paid` on `useSubscription()` still says whether the account pays.
+ * For apps with one paid tier: { premium, loading, offered }. 10.0.0: while the plan mode is `'free'`, `premium` is false and
+ * `offered` is false: the app hides its Premium features instead of showing them locked.
  */
 export const usePremium = () => {
   const s = useSubscription();
-  return { premium: s.paid || !s.selling, loading: s.loading, source: s.source, planMode: s.planMode };
+  return { premium: s.paid, loading: s.loading, source: s.source, planMode: s.planMode, offered: s.selling };
 };

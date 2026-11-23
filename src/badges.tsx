@@ -45,12 +45,13 @@ export function LockBadge({ size = 36, ...look }: LookProps & { size?: number })
 
 /**
  * Shows its children when the account can use `feature`; otherwise a locked card that opens the plans.
- * In a kids' app the button says "Ask a Parent or Guardian".
+ * In a kids' app the button says "Ask a Parent or Guardian". 10.0.0: while nothing is on sale, nothing instead of the card.
  */
 export function PremiumGate({ feature, name, onUnlock, children, ...look }: LookProps & { feature: string; name: string; onUnlock: () => void; children?: ReactNode }) {
   const { c, s, Text } = useLook(look);
   const sub = useSubscription();
   if (sub.canUse(feature)) return <>{children}</>;
+  if (!sub.selling) return null;
   const tierLabel = sub.config.tierLabels[sub.tierFor(feature)] ?? '';
   const button = sub.config.kids ? s.askGrownUp : s.unlock;
   return (

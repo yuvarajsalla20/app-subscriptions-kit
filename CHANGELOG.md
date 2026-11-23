@@ -2,6 +2,16 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 10.0.0
+
+**In free mode, Premium is hidden.** While the plan mode is `'free'` (the default), nothing hints that a Premium plan exists. Until now, free mode opened every Premium feature to everyone.
+
+- **The account counts as free.** `usePremium().premium` is false, and `canUse()`, `isAtLeast()`, `limit()` and `allowed()` answer as the free tier.
+- **New `usePremium().offered`, `usePremiumOffered()` and `offeredOptions()`.** `offered` is true only in subscription mode; an app hides a feature it gates in its own code while it is false. `offeredOptions()` leaves locked choices out of a list, except the one already chosen.
+- **`PremiumGate` draws nothing** in free mode instead of its locked card.
+
+Upgrading: an app that shows its own Premium features locked must hide them while `offered` is false (app-account-kit 10.0.0 already hides Premium rows, pages and locked menu options). Subscription mode is unchanged.
+
 ## 9.0.0
 
 **Plan mode: free or subscription.** An app can now run with nothing on sale, and that is the default. The owner turns selling on with `planMode: "subscription"` in the Firestore document `config/app`, with no new build.

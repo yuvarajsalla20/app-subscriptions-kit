@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FloatingCrown, PremiumGate, PremiumPill, SubscriptionProvider, defineSubscription, getPlanMode, planModeFrom, setPlanMode, usePremium, useSubscription } from '../src';
+import { FloatingCrown, PremiumGate, PremiumPill, SubscriptionProvider, defineSubscription, getPlanMode, offeredOptions, planModeFrom, setPlanMode, usePremium, useSubscription } from '../src';
 import { act, fakePayments, mount } from './render';
 
 const config = defineSubscription({ tiers: ['free', 'premium'], tierLabels: { premium: 'Premium' }, features: { effects: 'premium' }, plans: [{ id: 'yearly', tier: 'premium', label: 'Yearly' }] });
@@ -26,7 +26,7 @@ describe('plan mode (9.0.0)', () => {
     expect(planModeFrom({ planMode: 'subscription', subscriptionTesters: ['u2'] }, null)).toBe('free');
   });
 
-  it('is free by default: everything open, the store never asked, and no crown, pill or lock', async () => {
+  it('is free by default (10.0.0): Premium hidden, the store never asked, and no crown, pill, lock or gate', async () => {
     const payments = fakePayments();
     const onUnlock = vi.fn();
     const m = await mount(
@@ -37,7 +37,7 @@ describe('plan mode (9.0.0)', () => {
         <PremiumGate feature="effects" name="Effects" onUnlock={onUnlock} />
       </SubscriptionProvider>,
     );
-    expect(seen).toEqual({ premium: true, paid: false, canUse: true, selling: false });
+    expect(seen).toEqual({ premium: false, paid: false, canUse: false, selling: false });
     expect(payments.watch).not.toHaveBeenCalled();
     expect(m.label('Premium')).toBeUndefined();
     expect(m.root.toJSON()).toBeNull();
@@ -57,6 +57,11 @@ describe('plan mode (9.0.0)', () => {
     expect(seen).toEqual({ premium: false, paid: false, canUse: false, selling: true });
     expect(payments.watch).toHaveBeenCalled();
     expect(getPlanMode()).toBe('subscription');
+  });
+
+  it('offers Premium only in subscription mode, and keeps a chosen locked option (10.0.0)', () => {
+    expect(offeredOptions(['daily', 'hourly', 'custom'], false, (v) => v !== 'daily', (v) => v === 'custom')).toEqual(['daily', 'custom']);
+    expect(offeredOptions(['daily', 'hourly'], true, () => true, () => false)).toEqual(['daily', 'hourly']);
   });
 
   it('stays free when the source fails', async () => {
