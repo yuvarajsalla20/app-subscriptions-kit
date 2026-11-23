@@ -49,7 +49,7 @@ export function placeAt(p: CrownPlace, width: number, top: number, bottom: numbe
 }
 
 export interface FloatingCrownProps extends LookProps {
-  /** Opens the Plans screen. A free account and a member both land there. */
+  /** Opens the Plans screen. Only a free account sees the crown (6.0.0). */
   onPress: () => void;
   /** Keeps the place the person dragged it to (AsyncStorage). Without it the crown starts in the bottom-right corner each launch. */
   storage?: Pick<SubscriptionStorage, 'getItem' | 'setItem'>;
@@ -60,8 +60,8 @@ export interface FloatingCrownProps extends LookProps {
   onLift?: () => void;
 }
 
-/** The crown mark: gold disc with a dark crown for a free account, an ivory disc with a gold outline crown for a member. */
-function CrownMark({ member, gold, ink, soft, size }: { member: boolean; gold: readonly [string, string, string]; ink: string; soft: string; size: number }) {
+/** The crown mark: a gold disc with a dark crown. */
+function CrownMark({ gold, ink, size }: { gold: readonly [string, string, string]; ink: string; size: number }) {
   const g = size / 2;
   return (
     <Svg width={size} height={size} viewBox="0 0 60 60">
@@ -72,22 +72,37 @@ function CrownMark({ member, gold, ink, soft, size }: { member: boolean; gold: r
           <Stop offset="1" stopColor={gold[2]} />
         </LinearGradient>
       </Defs>
-      <Path d={`M${g} 1a${g - 1} ${g - 1} 0 1 0 0.01 0Z`} fill={member ? soft : 'url(#crownGold)'} stroke={member ? gold[1] : 'rgba(255,255,255,0.75)'} strokeWidth={2} />
-      <Path d="M17 38h26M17.8 35 16.5 24.5l6.5 4.7L30 20l7 9.2 6.5-4.7L42.2 35z" fill="none" stroke={member ? gold[2] : ink} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d={`M${g} 1a${g - 1} ${g - 1} 0 1 0 0.01 0Z`} fill="url(#crownGold)" stroke="rgba(255,255,255,0.75)" strokeWidth={2} />
+      <Path d="M17 38h26M17.8 35 16.5 24.5l6.5 4.7L30 20l7 9.2 6.5-4.7L42.2 35z" fill="none" stroke={ink} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
+}
+
+/**
+ * 6.0.0: whether the floating crown is on screen. Only for a free account, and only once the subscription is known, so a member
+ * never sees it appear for a moment at launch. A trial and a store grace period count as Premium. Hidden on the Premium page.
+ */
+export function useCrownShown(): boolean {
+  const { paid, loading } = useSubscription();
+  const premiumOpen = usePremiumPageShown();
+  return !paid && !loading && !premiumOpen;
+}
+
+/** The room a list leaves under its last row: `CROWN_SPACE` while the crown is shown, otherwise none (6.0.0). */
+export function useCrownSpace(): number {
+  return useCrownShown() ? CROWN_SPACE : 0;
 }
 
 /**
  * A gold crown that floats over the app's main pages and opens the Plans screen. The person can drag it anywhere; on release it
  * settles on the nearest side edge and the place is kept. A press that moves less than a few points is a tap.
  * Place it last inside a full-screen view. Lists under it end with `CROWN_SPACE` of room. 5.0.0: it hides while the Premium page
- * is open, where it covered Change Plan and repeated what the page already says.
+ * is open, where it covered Change Plan and repeated what the page already says. 6.0.0: it shows only to a free account, once the
+ * subscription is known; a member (including a trial or a store grace period) never sees it.
  */
 export function FloatingCrown({ onPress, storage, top = 120, bottom = 34, onLift, ...look }: FloatingCrownProps) {
   const { c, s } = useLook(look);
-  const { paid } = useSubscription();
-  const premiumOpen = usePremiumPageShown();
+  const shown = useCrownShown();
   const { width, height } = useWindowDimensions();
   const low = height - bottom;
   const [place, setPlace] = useState<CrownPlace>(DEFAULT_PLACE);
@@ -138,7 +153,7 @@ export function FloatingCrown({ onPress, storage, top = 120, bottom = 34, onLift
   }
 
   const gold = c.crown ?? DEFAULT_GOLD;
-  if (premiumOpen) return null;
+  if (!shown) return null;
   return (
     <Animated.View
       {...pan.panHandlers}
@@ -149,8 +164,8 @@ export function FloatingCrown({ onPress, storage, top = 120, bottom = 34, onLift
         width: CROWN_SIZE,
         height: CROWN_SIZE,
         transform: [...pos.getTranslateTransform(), { scale: lifted ? 1.12 : 1 }],
-        shadowColor: paid ? '#0E2B28' : gold[2],
-        shadowOpacity: lifted ? 0.45 : paid ? 0.16 : 0.38,
+        shadowColor: gold[2],
+        shadowOpacity: lifted ? 0.45 : 0.38,
         shadowRadius: lifted ? 22 : 14,
         shadowOffset: { width: 0, height: lifted ? 18 : 10 },
         elevation: lifted ? 14 : 8,
@@ -158,14 +173,14 @@ export function FloatingCrown({ onPress, storage, top = 120, bottom = 34, onLift
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={s.crownLabel(paid)}
+        accessibilityLabel={s.crownLabel(false)}
         accessibilityHint={s.crownHint}
         onPress={onPress}
         hitSlop={6}
         style={{ width: CROWN_SIZE, height: CROWN_SIZE, borderRadius: CROWN_SIZE / 2 }}
       >
         <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <CrownMark member={paid} gold={gold} ink={c.onPremium} soft={c.premiumSoft} size={CROWN_SIZE} />
+          <CrownMark gold={gold} ink={c.onPremium} size={CROWN_SIZE} />
         </View>
       </Pressable>
     </Animated.View>

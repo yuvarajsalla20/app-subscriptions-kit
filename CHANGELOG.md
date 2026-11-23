@@ -2,6 +2,17 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 6.0.0
+
+**The floating crown shows only to free accounts.** A member already has Premium, so a crown that opened the Plans page again offered nothing and covered part of each page.
+
+- **Hidden for Premium.** `FloatingCrown` draws nothing while the account has a paid tier, including a free trial and a store grace period. When the plan ends, the crown returns. The ivory member crown is removed.
+- **No flash at launch.** The crown stays hidden until the subscription is known, so a member never sees the gold crown appear and then disappear. A free account sees it as soon as the store answers.
+- **Room under lists follows the crown.** New `useCrownSpace()` returns `CROWN_SPACE` while the crown shows and 0 otherwise; use it in place of `CROWN_SPACE` for the bottom padding of a list. New `useCrownShown()`.
+- This is enforced in the kit. No prop turns the crown back on for a member.
+
+Upgrading: replace `paddingBottom: CROWN_SPACE` with `paddingBottom: useCrownSpace()`. No wording changes.
+
 ## 5.0.0
 
 **The Premium page shows plan facts only.** A subscriber's page read as a mix of a settings list and a billing page: switches of different sizes, an editor inside the card, and a large red Cancel button louder than the status card. The page now has one purpose.
