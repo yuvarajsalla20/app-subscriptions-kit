@@ -83,9 +83,10 @@ function CrownMark({ gold, ink, size }: { gold: readonly [string, string, string
  * never sees it appear for a moment at launch. A trial and a store grace period count as Premium. Hidden on the Premium page.
  */
 export function useCrownShown(): boolean {
-  const { paid, loading } = useSubscription();
+  const { paid, loading, selling } = useSubscription();
   const premiumOpen = usePremiumPageShown();
-  return !paid && !loading && !premiumOpen;
+  // 9.0.0: never while the plan mode is 'free', where nothing is on sale.
+  return selling && !paid && !loading && !premiumOpen;
 }
 
 /** The room a list leaves under its last row: `CROWN_SPACE` while the crown is shown, otherwise none (6.0.0). */

@@ -9,7 +9,7 @@ const memory = (start: string | null = null) => {
   return { getItem: vi.fn(async () => v), setItem: vi.fn(async (_: string, x: string) => void (v = x)) };
 };
 const crown = (payments = fakePayments(), onPress = vi.fn(), storage = memory()) => (
-  <SubscriptionProvider config={config} payments={payments} userId="u1">
+  <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId="u1">
     <FloatingCrown onPress={onPress} storage={storage} />
   </SubscriptionProvider>
 );
@@ -18,7 +18,7 @@ describe('FloatingCrown', () => {
   it('hides while the Premium page is open and returns once it closes (5.0.0)', async () => {
     const payments = fakePayments();
     const ui = (withPage: boolean) => (
-      <SubscriptionProvider config={config} payments={payments} userId="u1">
+      <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId="u1">
         {withPage ? <PremiumPage onOpenPlans={vi.fn()} features={[]} /> : null}
         <FloatingCrown onPress={vi.fn()} />
       </SubscriptionProvider>
@@ -79,7 +79,7 @@ describe('FloatingCrown', () => {
     const Probe = () => (seen.push(useCrownSpace()), null);
     const payments = fakePayments();
     await mount(
-      <SubscriptionProvider config={config} payments={payments} userId="u1">
+      <SubscriptionProvider planMode="subscription" config={config} payments={payments} userId="u1">
         <Probe />
       </SubscriptionProvider>,
     );

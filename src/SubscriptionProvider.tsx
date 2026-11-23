@@ -5,6 +5,7 @@ import { sameWatchState } from './payments';
 import { isPlan } from './pricing';
 import { subscriptionTerms } from './status';
 import { allowed, atLeast, canUse, limitFor, rank, tierFor } from './rules';
+import { DEFAULT_PLAN_MODE, setPlanMode, type PlanMode, type PlanModeSource } from './planMode';
 
 /** A plan change the store applies at the next renewal (a longer plan of the same level on the App Store). */
 export interface PendingSwitch {
@@ -41,6 +42,14 @@ export interface SubscriptionStorage {
 
 export interface SubscriptionState {
   config: SubscriptionConfig;
+  /**
+   * 9.0.0: `'free'` (the default) while nothing is on sale: every feature is open to everyone (`canUse`, `isAtLeast`, `limit`
+   * and `allowed` answer as the highest tier), the store is not asked, and no crown, Premium pill or paywall shows. `'subscription'`
+   * is the setup with plans on sale. `tier` and `paid` always describe what the account really holds.
+   */
+  planMode: PlanMode;
+  /** 9.0.0: true while a plan is on sale (`planMode` is `'subscription'`). */
+  selling: boolean;
   /** The account's tier now: 'free', 'premium', 'pro' … */
   tier: string;
   tierLabel: string;
@@ -105,10 +114,37 @@ export interface SubscriptionProviderProps {
   grownUpCheck?: () => Promise<boolean>;
   /** Keeps a booked plan switch between launches (AsyncStorage). Without it the switch shows until the app closes. */
   storage?: SubscriptionStorage;
+  /**
+   * 9.0.0: whether a plan is on sale. Leave out, or pass `'free'`, and nothing is sold: every feature is open and no crown, tag
+   * or paywall shows. Pass `firestorePlanMode(db)` from `app-subscriptions-kit/firestore` so the owner chooses it with
+   * `planMode` (and `subscriptionTesters`) in the Firestore document `config/app`, with no new build. Until the answer
+   * arrives, and whenever it cannot be read, the app stays free.
+   */
+  planMode?: PlanModeSource;
   children: ReactNode;
 }
 
-export function SubscriptionProvider({ config, payments, userId, grownUpCheck, storage, children }: SubscriptionProviderProps) {
+export function SubscriptionProvider({ config, payments, userId, grownUpCheck, storage, planMode: modeSource = DEFAULT_PLAN_MODE, children }: SubscriptionProviderProps) {
+  // 9.0.0: free until the owner's switch says otherwise, for this account.
+  const [mode, setMode] = useState<PlanMode>(typeof modeSource === 'string' ? (modeSource === 'subscription' ? 'subscription' : 'free') : DEFAULT_PLAN_MODE);
+  useEffect(() => {
+    let live = true;
+    if (typeof modeSource === 'string') {
+      setMode(modeSource === 'subscription' ? 'subscription' : 'free');
+      return;
+    }
+    setMode(DEFAULT_PLAN_MODE);
+    if (userId === undefined) return; // still signing in: stay free until the account is known
+    modeSource(userId)
+      .then((m) => live && setMode(m === 'subscription' ? 'subscription' : 'free'))
+      .catch(() => live && setMode(DEFAULT_PLAN_MODE));
+    return () => {
+      live = false;
+    };
+  }, [modeSource, userId]);
+  // Shared with app-account-kit and app-settings-kit (their Premium tag and Plan row).
+  useEffect(() => setPlanMode(mode), [mode]);
+  const selling = mode === 'subscription';
   const [state, setState] = useState<WatchState>({ tier: 'free', source: 'free', server: null });
   const [loading, setLoading] = useState(true);
   const [testerTier, setTesterTierState] = useState<string | null>(null);
@@ -157,16 +193,22 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
     setState({ tier: 'free', source: 'free', server: null });
     setJustSubscribed(false);
     if (userId === undefined) return; // still signing in: wait for the account
+    // 9.0.0: with nothing on sale the store is never asked; the account counts as free.
+    if (!selling) {
+      setLoading(false);
+      return;
+    }
     const stop = payments.watch(userId, (s) => {
       // The same answer again (each return to the app asks twice or more) keeps the old object: no app-wide redraw.
       setState((prev) => (sameWatchState(prev, s) ? prev : s));
       setLoading(false);
     });
     return stop;
-  }, [payments, userId]);
+  }, [payments, userId, selling]);
   useEffect(() => {
+    if (!selling) return;
     void payments.getTesterTier?.().then(setTesterTierState).catch(() => undefined);
-  }, [payments]);
+  }, [payments, selling]);
 
   const grownUp = useCallback(async () => (config.kids && grownUpCheck ? grownUpCheck() : true), [config.kids, grownUpCheck]);
   // After a purchase the store's own listener updates the tier too; this just avoids a moment of "locked".
@@ -184,8 +226,12 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
 
   const value = useMemo<SubscriptionState>(() => {
     const tier = config.tiers.includes(state.tier) ? state.tier : 'free';
+    // 9.0.0: in free mode every check answers as the highest tier, so every feature is open to everyone.
+    const open = selling ? tier : config.tiers[config.tiers.length - 1] ?? tier;
     return {
       config,
+      planMode: mode,
+      selling,
       tier,
       tierLabel: config.tierLabels[tier] ?? tier,
       paid: tier !== 'free',
@@ -194,10 +240,10 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
       renewal: state.renewal ?? null,
       loading,
       ready: payments.ready,
-      isAtLeast: (t) => atLeast(config, tier, t),
-      canUse: (f) => canUse(config, tier, f),
-      limit: (n) => limitFor(config, tier, n),
-      allowed: (n, v) => allowed(config, tier, n, v),
+      isAtLeast: (t) => atLeast(config, open, t),
+      canUse: (f) => canUse(config, open, f),
+      limit: (n) => limitFor(config, open, n),
+      allowed: (n, v) => allowed(config, open, n, v),
       tierFor: (f) => tierFor(config, f),
       loadPlans: () => payments.loadPlans(),
       buy,
@@ -225,7 +271,7 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
         set: async (t) => { await payments.setTesterTier?.(t); setTesterTierState(t && t !== 'free' ? t : null); },
       },
     };
-  }, [config, state, loading, payments, grownUp, settle, bought, justSubscribed, testerTier, pendingSwitch, keep, buy]);
+  }, [config, state, loading, payments, grownUp, settle, bought, justSubscribed, testerTier, pendingSwitch, keep, buy, mode, selling]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -240,8 +286,11 @@ export function useSubscription(): SubscriptionState {
 /** The current tier name. */
 export const useTier = (): string => useSubscription().tier;
 
-/** For apps with one paid tier: { premium, loading }. */
+/**
+ * For apps with one paid tier: { premium, loading }. 9.0.0: `premium` is true for everyone while the plan mode is `'free'`, so
+ * every Premium feature is open; `paid` on `useSubscription()` still says whether the account pays.
+ */
 export const usePremium = () => {
   const s = useSubscription();
-  return { premium: s.paid, loading: s.loading, source: s.source };
+  return { premium: s.paid || !s.selling, loading: s.loading, source: s.source, planMode: s.planMode };
 };
