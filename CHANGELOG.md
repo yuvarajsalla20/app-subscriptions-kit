@@ -2,6 +2,18 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 8.0.0
+
+**The Subscription page names the plan the account holds.** The page listed what Premium offers but never said which plan the person was on. It now opens with the Your Plan card in every app.
+
+- **New `YourPlanCard`**, drawn first on `PremiumPage`. A free account reads "Free" and "Your account is on the Free plan, which includes every free feature." A paid account reads the plan's name (e.g., "Premium Monthly"), a badge (Active, Free Trial or Ending), when it renews or ends with the store's price (e.g., "Renews on Dec 23, 2026 for $3.99 a month."), and the store that bills it (App Store or Google Play). A payment problem is said on the card.
+- **"Manage" replaces "Your Plan"** as the heading over Change Plan and Restore Purchases, so the page never shows two headings with the same name.
+- **A free account** sees the Your Plan card above the Get Premium card. Buying stays on Plans, in keeping with the Page rule.
+- `SubscriptionStatusCard` is deprecated; it now draws the Your Plan card for a paid account. New `yourPlanLines()` returns the card's words.
+- New strings: `manageHeading`, `freePlanLine`, `planActive`, `planTrial`, `planEnding`, `renewsLine`, `trialEndsLine`, `endsLine`, `allIncludedLine` and `billedThrough`. `yourPlan` is now the card's label.
+
+Upgrading: nothing to change in apps. The page looks different, so this is a major version.
+
 ## 7.0.0
 
 **The Premium page enforces the Page rule.** The page shows plan facts only, so it no longer accepts a switch or an editor.

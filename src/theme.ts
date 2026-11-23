@@ -243,8 +243,26 @@ export interface SubscriptionStrings {
   premiumSettings: (tierLabel: string) => string;
   /** 5.0.0: the heading over everything a subscriber's plan includes: "Included With Premium". */
   includedWith: (tierLabel: string) => string;
-  /** 5.0.0: the heading over Change Plan and Restore Purchases once the account pays. */
+  /** 8.0.0: the label at the top of the Your Plan card, the first card on the Subscription page. */
   yourPlan: string;
+  /** 8.0.0: the heading over Change Plan and Restore Purchases once the account pays (was "Your Plan" before 8.0.0). */
+  manageHeading: string;
+  /** 8.0.0: the Your Plan card for a free account: "Your account is on the Free plan, which includes every free feature." */
+  freePlanLine: (freeLabel: string) => string;
+  /** 8.0.0: the badge on the Your Plan card. */
+  planActive: string;
+  planTrial: string;
+  planEnding: string;
+  /** 8.0.0: "Renews on Dec 23, 2026 for $3.99 a month." The price is left out when the store has not given it. */
+  renewsLine: (date: string, price: string) => string;
+  /** 8.0.0: "Your free trial ends on Nov 30, 2026. Premium Yearly then renews for $29.99 a year." */
+  trialEndsLine: (date: string, planName: string, price: string) => string;
+  /** 8.0.0: "Premium ends on Dec 23, 2026 and will not renew. Every Premium feature remains available until then." */
+  endsLine: (tierLabel: string, date: string) => string;
+  /** 8.0.0: a paid plan with no end date: "Every Premium feature is included." */
+  allIncludedLine: (tierLabel: string) => string;
+  /** 8.0.0: the last line of the Your Plan card, beside the store's name. */
+  billedThrough: string;
   /** 5.0.0: the line under the included list naming the features whose settings live in Preferences. */
   setInPreferences: (labels: readonly string[]) => string;
   /** The floating crown, for screen readers (4.0.0): "Premium" for a free account, "Premium Member" once paid. */
@@ -377,6 +395,16 @@ export const DEFAULT_STRINGS: SubscriptionStrings = {
   premiumSettings: (t) => `${t} Settings`,
   includedWith: (t) => `Included With ${t}`,
   yourPlan: 'Your Plan',
+  manageHeading: 'Manage',
+  freePlanLine: (f) => `Your account is on the ${f} plan, which includes every free feature.`,
+  planActive: 'Active',
+  planTrial: 'Free Trial',
+  planEnding: 'Ending',
+  renewsLine: (d, p) => (p ? `Renews on ${d} for ${p}.` : `Renews on ${d}.`),
+  trialEndsLine: (d, plan, p) => `Your free trial ends on ${d}. ${plan} then renews${p ? ` for ${p}` : ''}.`,
+  endsLine: (t, d) => `${t} ends on ${d} and will not renew. Every ${t} feature remains available until then.`,
+  allIncludedLine: (t) => `Every ${t} feature is included.`,
+  billedThrough: 'Billed Through',
   setInPreferences: (l) => {
     const names = l.length > 1 ? `${l.slice(0, -1).join(', ')} and ${l[l.length - 1]}` : l[0] ?? '';
     return `${names} ${l.length > 1 ? 'are' : 'is'} set in Settings, under Preferences.`;

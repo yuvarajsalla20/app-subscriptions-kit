@@ -8,6 +8,7 @@ export { CompareTable } from './CompareTable';
 export { PlansScreen, type PlansScreenProps } from './PlansScreen';
 export { SubscriptionRow } from './SubscriptionRow';
 export { SubscriptionStatusCard } from './StatusCard';
+export { YourPlanCard, yourPlanLines, type YourPlanCardProps, type YourPlanLines } from './YourPlanCard';
 export { usePremiumPageShown } from './pageOpen';
 export { PremiumPage, SETTLE_MS, UNCONFIRMED_MS, UPDATED_MS, type PremiumFeature, type PremiumPageProps } from './PremiumPage';
 export { shortDay, statusLines, subscriptionTerms, type StatusLines, type SubscriptionTerms } from './status';

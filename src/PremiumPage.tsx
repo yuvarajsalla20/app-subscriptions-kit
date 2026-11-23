@@ -5,7 +5,7 @@ import { UpdatingBox, type UpdatingDone } from './Updating';
 import type { StoreOffer, StorePlan } from './payments';
 import { isPlan, months, money, offerSaving, savings } from './pricing';
 import { shortDay, subscriptionTerms } from './status';
-import { SubscriptionStatusCard } from './StatusCard';
+import { YourPlanCard } from './YourPlanCard';
 import { useSubscription } from './SubscriptionProvider';
 import { DEFAULT_THEME, type StorePlatform } from './theme';
 import { SubscriptionRow } from './SubscriptionRow';
@@ -57,9 +57,10 @@ type RestoreState = 'idle' | 'checking' | 'allSet' | 'done' | 'none' | 'failed';
 
 /**
  * A whole Premium page for Settings, the same for every app: only the features, words, colors and icon are the app's.
- * Free: Get Premium, then See Plans, Restore Purchases and Redeem a Code. Paid (5.0.0, plan facts only): the status card,
- * Included With Premium (every feature, with a check), Your Plan (Change Plan, not on the longest plan, and Restore Purchases),
- * then Cancel Subscription last as a quiet red row (with Before You Go first). After a cancel: Your Plan with Renew
+ * 8.0.0: every account first sees the Your Plan card, which names the plan it holds. Free: Your Plan, Get Premium, then See
+ * Plans, Restore Purchases and Redeem a Code. Paid (5.0.0, plan facts only): Your Plan,
+ * Included With Premium (every feature, with a check), Manage (Change Plan, not on the longest plan, and Restore Purchases),
+ * then Cancel Subscription last as a quiet red row (with Before You Go first). After a cancel: Manage with Renew
  * Subscription and what is lost, then the included list. Right after a purchase: a welcome card. The Free and Premium
  * comparison follows this page, drawn by app-settings-kit. While the page is open, the floating crown stays hidden.
  */
@@ -398,10 +399,14 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
       </View>
     );
   } else if (paid) {
-    top = <SubscriptionStatusCard icon={icon} {...look} />;
+    // 8.0.0: the Your Plan card says which plan the account holds, its status, the next date with the price, and the store.
+    top = <YourPlanCard icon={icon} plans={plans} {...look} />;
   } else {
     const longPlan = ofTier.find((p) => p !== monthly && p.period);
+    // 8.0.0: a free account also sees which plan it holds first, then what Premium offers.
     top = (
+      <>
+      <YourPlanCard plans={plans} {...look} />
       <View accessible style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: c.radius + 8, backgroundColor: c.premiumSoft, borderWidth: 1, borderColor: c.premium }}>
         <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}>{mark(26)}</View>
         <View style={{ flex: 1, gap: 2 }}>
@@ -410,6 +415,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
           <Text style={{ color: c.muted, fontSize: 13 }}>{longPlan ? s.orPrice(per(longPlan)) : s.getPremiumNote}</Text>
         </View>
       </View>
+      </>
     );
   }
 
@@ -430,7 +436,8 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
   } else {
     actions = (
       <>
-        {heading(s.yourPlan)}
+        {/* 8.0.0: "Manage"; "Your Plan" is now the card at the top of the page. */}
+        {heading(s.manageHeading)}
         {terms.billingIssue ? (
           <View accessibilityLiveRegion="polite" style={{ padding: 12, borderRadius: c.radius, backgroundColor: c.warn }}>
             <Text style={{ color: c.text, fontSize: 14, lineHeight: 20 }}>{s.graceNote}</Text>
