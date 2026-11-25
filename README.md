@@ -2,7 +2,7 @@
 
 The subscription pattern for React Native and Expo apps (iOS, Android and web): one config for tiers, features and limits; checks such as `canUse()` and `limit()`; a `useSubscription()` hook; and themeable screens that follow the App Store and Google Play rules: the Plans screen, the Free vs paid table, a complete Premium page for Settings, lock badges and plan pills.
 
-**Current version: 11.1.0** (tag `v11.1.0`)
+**Current version: 11.2.0** (tag `v11.2.0`)
 
 It never talks to a store. Give it [app-payments-kit](https://github.com/yuvarajsalla20/app-payments-kit), or any object with the same few functions (`PaymentsLike` in `src/payments.ts`). For the full App Store Connect, RevenueCat and EAS setup, follow the Subscriptions and Payments Playbook in the app's `runbooks/` folder.
 
@@ -26,7 +26,7 @@ Tools that work alongside them: [code-review-kit](https://github.com/yuvarajsall
 ```jsonc
 // package.json
 "dependencies": {
-  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v11.1.0>",
+  "app-subscriptions-kit": "git+https://github.com/yuvarajsalla20/app-subscriptions-kit.git#<full SHA of v11.2.0>",
   "app-payments-kit": "git+https://github.com/yuvarajsalla20/app-payments-kit.git#<full SHA of v2.10.0>"
 },
 "kitVersions": {
@@ -37,7 +37,7 @@ Tools that work alongside them: [code-review-kit](https://github.com/yuvarajsall
 
 Pin the full commit SHA of a release tag, and write the tag in `kitVersions`. Find a SHA with `git ls-remote https://github.com/yuvarajsalla20/app-subscriptions-kit refs/tags/v11.0.0`.
 
-**Peer dependencies:** `react` ≥ 18, `react-native` ≥ 0.74, `react-native-svg` ≥ 13 (Expo apps install it with `npx expo install react-native-svg`).
+**Peer dependencies:** `react` ≥ 18, `react-native` ≥ 0.74, `app-core-kit` ≥ 1.12.0 (11.2.0: the plan mode), `react-native-svg` ≥ 13 (Expo apps install it with `npx expo install react-native-svg`).
 
 The Premium page works best with app-payments-kit **2.10.0** or later, which tells the page when the store has answered and also shows the loader when the person returns from the Google Play page.
 
