@@ -74,4 +74,37 @@ describe('plan mode (9.0.0)', () => {
     expect(seen?.selling).toBe(false);
     expect(getPlanMode()).toBe('free');
   });
+
+  it('keeps loading until the source answers, then remembers the answer for an offline launch (11.1.0)', async () => {
+    const kept = new Map<string, string>();
+    const storage = { getItem: async (k: string) => kept.get(k) ?? null, setItem: async (k: string, v: string) => void kept.set(k, v), removeItem: async (k: string) => void kept.delete(k) };
+    let answer: (m: 'subscription') => void = () => undefined;
+    const slow = () => new Promise<'subscription'>((resolve) => (answer = resolve));
+    let state: { loading: boolean; selling: boolean } | null = null;
+    function Loading() {
+      const s = useSubscription();
+      state = { loading: s.loading, selling: s.selling };
+      return null;
+    }
+    const payments = fakePayments();
+    const m = await mount(
+      <SubscriptionProvider planMode={slow} storage={storage} config={config} payments={payments} userId="u1">
+        <Loading />
+      </SubscriptionProvider>,
+    );
+    expect(state).toEqual({ loading: true, selling: false });
+    await act(async () => answer('subscription'));
+    expect(state?.selling).toBe(true);
+    expect(kept.get('app-subscriptions-kit:plan-mode:u1')).toBe('subscription');
+    m.root.unmount();
+
+    // The next launch is offline: the source fails and the kept answer is used.
+    await mount(
+      <SubscriptionProvider planMode={async () => { throw new Error('offline'); }} storage={storage} config={config} payments={fakePayments()} userId="u1">
+        <Loading />
+      </SubscriptionProvider>,
+    );
+    await act(async () => undefined);
+    expect(state?.selling).toBe(true);
+  });
 });

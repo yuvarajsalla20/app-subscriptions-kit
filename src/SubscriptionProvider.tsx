@@ -6,39 +6,11 @@ import { isPlan } from './pricing';
 import { subscriptionTerms } from './status';
 import { allowed, atLeast, canUse, limitFor, rank, tierFor } from './rules';
 import { DEFAULT_PLAN_MODE, setPlanMode, type PlanMode, type PlanModeSource } from './planMode';
+import { useBookedSwitch, type PendingSwitch, type SubscriptionStorage } from './pendingSwitch';
 
-/** A plan change the store applies at the next renewal (a longer plan of the same level on the App Store). */
-export interface PendingSwitch {
-  /** The plan that comes next (a `config.plans` id). */
-  planId: string;
-  /** When it starts: the current plan's renewal date, if known. */
-  startsAt: string | null;
-  /** When it was booked. Used to let it go if no start date was known. */
-  bookedAt?: string;
-}
+export type { PendingSwitch, SubscriptionStorage } from './pendingSwitch';
 
-const HOUR = 3_600_000;
-const DAY = 24 * HOUR;
 
-/** A saved switch, or null when what was saved isn't one (an older build, a broken write). */
-const readPending = (raw: string | null): PendingSwitch | null => {
-  try {
-    const v = raw ? (JSON.parse(raw) as Partial<PendingSwitch>) : null;
-    if (!v || typeof v.planId !== 'string' || !v.planId) return null;
-    const startsAt = typeof v.startsAt === 'string' && !Number.isNaN(Date.parse(v.startsAt)) ? v.startsAt : null;
-    const bookedAt = typeof v.bookedAt === 'string' && !Number.isNaN(Date.parse(v.bookedAt)) ? v.bookedAt : undefined;
-    return { planId: v.planId, startsAt, ...(bookedAt ? { bookedAt } : {}) };
-  } catch {
-    return null;
-  }
-};
-
-/** Where a booked switch is kept between launches. AsyncStorage fits as it is. */
-export interface SubscriptionStorage {
-  getItem(key: string): Promise<string | null>;
-  setItem(key: string, value: string): Promise<void>;
-  removeItem(key: string): Promise<void>;
-}
 
 export interface SubscriptionState {
   config: SubscriptionConfig;
@@ -112,36 +84,55 @@ export interface SubscriptionProviderProps {
   userId: string | null | undefined;
   /** The app's own grown-ups check (kids' apps). Resolve true to go on. */
   grownUpCheck?: () => Promise<boolean>;
-  /** Keeps a booked plan switch between launches (AsyncStorage). Without it the switch shows until the app closes. */
+  /** Keeps a booked plan switch, and (11.1.0) the last plan mode of each account, between launches (AsyncStorage). */
   storage?: SubscriptionStorage;
   /**
    * 9.0.0: whether a plan is on sale. Leave out, or pass `'free'`, and nothing is sold: no crown, tag or paywall shows, and
    * (10.0.0) every Premium feature is hidden. Pass `firestorePlanMode(db)` from `app-subscriptions-kit/firestore` so the owner chooses it with
-   * `planMode` (and `subscriptionTesters`) in the Firestore document `config/app`, with no new build. Until the answer
-   * arrives, and whenever it cannot be read, the app stays free.
+   * `planMode` (and `subscriptionTesters`) in the Firestore document `config/app`, with no new build. 11.1.0: until the
+   * answer arrives `loading` stays true; when it cannot be read, the last answer kept in `storage` is used, else free.
    */
   planMode?: PlanModeSource;
   children: ReactNode;
 }
 
+/** Anything other than `'subscription'` is `'free'`. */
+const fixedMode = (m: string): PlanMode => (m === 'subscription' ? 'subscription' : 'free');
+
 export function SubscriptionProvider({ config, payments, userId, grownUpCheck, storage, planMode: modeSource = DEFAULT_PLAN_MODE, children }: SubscriptionProviderProps) {
-  // 9.0.0: free until the owner's switch says otherwise, for this account.
-  const [mode, setMode] = useState<PlanMode>(typeof modeSource === 'string' ? (modeSource === 'subscription' ? 'subscription' : 'free') : DEFAULT_PLAN_MODE);
+  // 9.0.0: free until the owner's switch says otherwise, for this account. 11.1.0: while a lookup is still answering,
+  // `loading` stays true, so a subscriber never sees the free app for a moment at launch; when the lookup fails (offline),
+  // the last answer for this account kept in `storage` is used, and with none the default.
+  const [mode, setMode] = useState<PlanMode>(typeof modeSource === 'string' ? fixedMode(modeSource) : DEFAULT_PLAN_MODE);
+  const [modeFor, setModeFor] = useState<string | null | undefined>(typeof modeSource === 'string' ? userId : undefined);
+  const modeKnown = typeof modeSource === 'string' || (userId !== undefined && modeFor === userId);
   useEffect(() => {
     let live = true;
     if (typeof modeSource === 'string') {
-      setMode(modeSource === 'subscription' ? 'subscription' : 'free');
+      setMode(fixedMode(modeSource));
+      setModeFor(userId);
       return;
     }
     setMode(DEFAULT_PLAN_MODE);
+    setModeFor(undefined);
     if (userId === undefined) return; // still signing in: stay free until the account is known
+    const savedKey = `app-subscriptions-kit:plan-mode:${userId ?? 'signed-out'}`;
     modeSource(userId)
-      .then((m) => live && setMode(m === 'subscription' ? 'subscription' : 'free'))
-      .catch(() => live && setMode(DEFAULT_PLAN_MODE));
+      .then((m) => {
+        const next = fixedMode(m);
+        void storage?.setItem(savedKey, next).catch(() => undefined);
+        return next;
+      })
+      .catch(async () => fixedMode((await storage?.getItem(savedKey).catch(() => null)) ?? DEFAULT_PLAN_MODE))
+      .then((m) => {
+        if (!live) return;
+        setMode(m);
+        setModeFor(userId);
+      });
     return () => {
       live = false;
     };
-  }, [modeSource, userId]);
+  }, [modeSource, userId, storage]);
   // Shared with app-account-kit and app-settings-kit (their Premium tag and Plan row).
   useEffect(() => setPlanMode(mode), [mode]);
   const selling = mode === 'subscription';
@@ -149,36 +140,7 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
   const [loading, setLoading] = useState(true);
   const [testerTier, setTesterTierState] = useState<string | null>(null);
   const [justSubscribed, setJustSubscribed] = useState(false);
-  const pendingKey = `app-subscriptions-kit:pending-switch:${userId ?? 'signed-out'}`;
-  // Kept with the account it belongs to, so a sign-in change never shows (or clears) the last person's switch.
-  const [saved, setSaved] = useState<{ key: string; p: PendingSwitch | null }>({ key: pendingKey, p: null });
-  const booked = saved.key === pendingKey ? saved.p : null;
-  const keep = useCallback((p: PendingSwitch | null) => {
-    setSaved({ key: pendingKey, p });
-    void (p ? storage?.setItem(pendingKey, JSON.stringify(p)) : storage?.removeItem(pendingKey))?.catch(() => undefined);
-  }, [storage, pendingKey]);
-  useEffect(() => {
-    let live = true;
-    setSaved({ key: pendingKey, p: null });
-    void storage?.getItem(pendingKey)
-      .then((raw) => { if (live) setSaved({ key: pendingKey, p: readPending(raw) }); })
-      .catch(() => undefined);
-    return () => { live = false; };
-  }, [storage, pendingKey]);
-  // The booked switch goes once the store shows the new plan, says the subscription stops renewing, or has renewed past
-  // the start date on the old plan (the switch was undone in the store). Failing all that, a few days after its date (or
-  // 40 days after booking when no date was known). Only the store's own answer counts: a first "free" before the store
-  // has answered must not wipe it.
-  useEffect(() => {
-    if (!booked || loading) return;
-    const r = state.renewal;
-    const now = Date.now();
-    const starts = booked.startsAt ? Date.parse(booked.startsAt) : NaN;
-    const late = !Number.isNaN(starts) ? now > starts + 3 * DAY : booked.bookedAt ? now > Date.parse(booked.bookedAt) + 40 * DAY : false;
-    const renewedPast = !Number.isNaN(starts) && !!r?.until && Date.parse(r.until) > starts + HOUR;
-    const storeSays = state.source === 'store' && !!r && (r.willRenew === false || isPlan(r.productId, booked.planId) || renewedPast);
-    if (storeSays || late) keep(null);
-  }, [booked, loading, state, keep]);
+  const { booked, keep } = useBookedSwitch(storage, userId, loading, state);
   // Shown only while it can still happen: a paid account of the plan's tier that is still renewing.
   const tierOk = config.tiers.includes(state.tier) ? state.tier : 'free';
   const bookedPlan = booked ? config.plans.find((p) => p.id === booked.planId) : undefined;
@@ -192,7 +154,7 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
     // Another person signed in: nothing of the last one's subscription may show (their tier, dates or welcome) until the new answer.
     setState({ tier: 'free', source: 'free', server: null });
     setJustSubscribed(false);
-    if (userId === undefined) return; // still signing in: wait for the account
+    if (userId === undefined || !modeKnown) return; // still signing in, or the plan mode is not known yet: wait
     // 9.0.0: with nothing on sale the store is never asked; the account counts as free.
     if (!selling) {
       setLoading(false);
@@ -204,7 +166,7 @@ export function SubscriptionProvider({ config, payments, userId, grownUpCheck, s
       setLoading(false);
     });
     return stop;
-  }, [payments, userId, selling]);
+  }, [payments, userId, selling, modeKnown]);
   useEffect(() => {
     if (!selling) return;
     void payments.getTesterTier?.().then(setTesterTierState).catch(() => undefined);

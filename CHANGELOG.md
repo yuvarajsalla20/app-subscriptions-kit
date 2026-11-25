@@ -2,6 +2,17 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 11.1.0
+
+**The plan mode works offline, and the Premium page code is split into smaller parts.**
+
+- **Remembered per account.** `SubscriptionProvider` keeps the last plan mode for each account in `storage`. When the lookup fails on a later launch (e.g., offline), the kept answer is used, so a subscription app does not fall back to free mode.
+- **Loading until the plan mode is known.** `loading` stays true until the plan mode lookup answers, so an app never draws free mode first and then switches.
+- **`firestorePlanMode()` fails on a read error** instead of answering free, so the provider can use the kept answer. It tries again at the next sign-in.
+- **Smaller files.** The Premium page, its strings, the booked plan switch and the Plans screen's plan choice now live in separate files (`src/premium/`, `strings.ts`, `stringTypes.ts`, `pendingSwitch.ts`, `plansChoice.ts`). Exports are unchanged.
+
+Upgrading: nothing to change in apps. Pass `storage` (e.g., AsyncStorage) to `SubscriptionProvider` to keep the plan mode for offline launches.
+
 ## 11.0.0
 
 **The Your Plan card follows the Get Premium pattern.** It had a small caption, an empty circle and a long sentence, which read differently from the Get Premium card beneath it.
