@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, ActivityIndicator } from 'react-native';
-import type { SubscriptionState } from '../SubscriptionProvider';
+import type { SubscriptionState } from '../subscription/SubscriptionProvider';
 import { Badge, PageRow, statusColors, type Look } from './parts';
 
 /** How long "You're All Set" or "No Purchases Found" stays before the hint comes back. */

@@ -2,6 +2,10 @@
 
 Release notes for app-subscriptions-kit, newest first. Each version is tagged in git (`v1.18.0`).
 
+## 11.2.1
+
+Nothing breaks and nothing on screen changes. The source is grouped by feature (`subscription/`, `premium/`, `plans/`, `crown/`, `shared/`) instead of loose files. `app-subscriptions-kit` and `app-subscriptions-kit/firestore` export exactly what they did.
+
 ## 11.2.0
 
 Nothing breaks. The plan mode (`usePlanMode`, `setPlanMode`, `planModeFrom`, `usePremiumOffered`, `offeredOptions` and the types) is now app-core-kit's single copy (`app-core-kit/shared`), still exported here. It keeps the same global key, so every kit reads one value. New peer dependency: app-core-kit 1.12.0 or later, which every app on the kits already installs.

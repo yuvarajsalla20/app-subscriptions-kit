@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
-import { Crowns, Lock, useLook, type LookProps } from './look';
-import { isPlan } from './pricing';
-import { DEFAULT_STRINGS, type SubscriptionStrings } from './theme';
-import { useSubscription, type SubscriptionState } from './SubscriptionProvider';
+import { Crowns, Lock, useLook, type LookProps } from '../look';
+import { isPlan } from '../subscription/pricing';
+import { DEFAULT_STRINGS, type SubscriptionStrings } from '../theme';
+import { useSubscription, type SubscriptionState } from '../subscription/SubscriptionProvider';
 
 /**
  * The "Premium" pill beside a paid feature, such as Data Export in Settings: the king and queen crowns and the tier name, gold on soft gold (the approved look, the same as the paid plan pill).

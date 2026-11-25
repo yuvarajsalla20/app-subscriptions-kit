@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, PanResponder, Pressable, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
-import { useLook, type LookProps } from './look';
-import { usePremiumPageShown } from './pageOpen';
-import { useSubscription, type SubscriptionStorage } from './SubscriptionProvider';
+import { useLook, type LookProps } from '../look';
+import { usePremiumPageShown } from '../shared/pageOpen';
+import { useSubscription, type SubscriptionStorage } from '../subscription/SubscriptionProvider';
 
 /** The crown's gold, light to deep: the same gold as the Premium tag and the comparison table. */
 export const DEFAULT_GOLD = ['#F3D58A', '#C9952B', '#9A6B12'] as const;

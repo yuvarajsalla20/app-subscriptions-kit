@@ -1,6 +1,6 @@
 import { View } from 'react-native';
-import { Crowns, useLook, type LookProps } from './look';
-import { useSubscription } from './SubscriptionProvider';
+import { Crowns, useLook, type LookProps } from '../look';
+import { useSubscription } from '../subscription/SubscriptionProvider';
 
 const TICK = '✓';
 const NONE = '–';

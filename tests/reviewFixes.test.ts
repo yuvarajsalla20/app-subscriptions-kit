@@ -13,7 +13,7 @@ describe('review fixes', () => {
 
 describe('sameWatchState', () => {
   it('treats a repeated store answer as the same, and a real change as new', async () => {
-    const { sameWatchState } = await import('../src/payments');
+    const { sameWatchState } = await import('../src/subscription/payments');
     const a = { tier: 'premium', source: 'store' as const, server: null, renewal: { until: '2026-12-01', willRenew: true, productId: 'p', trial: false } };
     expect(sameWatchState(a, { ...a, renewal: { ...a.renewal } })).toBe(true);
     expect(sameWatchState(a, { ...a, renewal: { ...a.renewal, willRenew: false } })).toBe(false);

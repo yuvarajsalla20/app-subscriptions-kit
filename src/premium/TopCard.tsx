@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
-import type { StorePlan } from '../payments';
-import type { SubscriptionState } from '../SubscriptionProvider';
-import { YourPlanCard } from '../YourPlanCard';
+import type { StorePlan } from '../subscription/payments';
+import type { SubscriptionState } from '../subscription/SubscriptionProvider';
+import { YourPlanCard } from './YourPlanCard';
 import type { LookProps } from '../look';
 import type { Look } from './parts';
 

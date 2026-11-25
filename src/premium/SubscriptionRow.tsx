@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, Switch, View } from 'react-native';
 import { PremiumPill } from './badges';
-import { useLook, type LookProps } from './look';
-import { rank } from './rules';
-import { subscriptionTerms } from './status';
-import { useSubscription } from './SubscriptionProvider';
-import type { PurchaseResult } from './payments';
+import { useLook, type LookProps } from '../look';
+import { rank } from '../subscription/rules';
+import { subscriptionTerms } from '../subscription/status';
+import { useSubscription } from '../subscription/SubscriptionProvider';
+import type { PurchaseResult } from '../subscription/payments';
 
 /** Formats a date for the Renews / Ends line. */
 const day = (iso: string) => {

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import type { LookProps } from './look';
-import { useSubscription } from './SubscriptionProvider';
+import type { LookProps } from '../look';
+import { useSubscription } from '../subscription/SubscriptionProvider';
 import { YourPlanCard } from './YourPlanCard';
 
 /**

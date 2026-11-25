@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Modal, Pressable, View } from 'react-native';
-import type { StoreOffer, StorePlan } from '../payments';
-import { months, money, savings } from '../pricing';
+import type { StoreOffer, StorePlan } from '../subscription/payments';
+import { months, money, savings } from '../subscription/pricing';
 import { BigButton, cardStyle, Heading, PageRow, statusColors, Tag, type Look } from './parts';
 
 interface Props {

@@ -1,12 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Platform, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { Crowns, useLook, type LookProps } from './look';
-import type { StorePlan } from './payments';
-import { isPlan } from './pricing';
-import { shortDay, subscriptionTerms } from './status';
-import { useSubscription } from './SubscriptionProvider';
-import type { StorePlatform } from './theme';
+import { Crowns, useLook, type LookProps } from '../look';
+import type { StorePlan } from '../subscription/payments';
+import { isPlan } from '../subscription/pricing';
+import { shortDay, subscriptionTerms } from '../subscription/status';
+import { useSubscription } from '../subscription/SubscriptionProvider';
+import type { StorePlatform } from '../theme';
 
 export interface YourPlanCardProps extends LookProps {
   /** The mark beside a paid plan. Default: a king and a queen crown (`<Crowns>`). */
