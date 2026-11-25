@@ -1,15 +1,23 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, ActivityIndicator, Modal, Platform, Pressable, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 import { Crowns, useLook, type LookProps } from './look';
 import { UpdatingBox, type UpdatingDone } from './Updating';
 import type { StoreOffer, StorePlan } from './payments';
-import { isPlan, months, money, offerSaving, savings } from './pricing';
+import { isPlan, months, offerSaving, savings } from './pricing';
 import { shortDay, subscriptionTerms } from './status';
-import { YourPlanCard } from './YourPlanCard';
 import { useSubscription } from './SubscriptionProvider';
-import { DEFAULT_THEME, type StorePlatform } from './theme';
+import type { StorePlatform } from './theme';
 import { SubscriptionRow } from './SubscriptionRow';
 import { usePremiumPageOpen } from './pageOpen';
+import { BeforeYouGo } from './premium/BeforeYouGo';
+import { IncludedList } from './premium/IncludedList';
+import { useManage } from './premium/manage';
+import { BigButton, cardStyle, Heading, keepTogether, PageRow, statusColors, Tag } from './premium/parts';
+import { RestoreRow, useRestore } from './premium/restore';
+import { TopCard } from './premium/TopCard';
+
+export { SETTLE_MS, UNCONFIRMED_MS, UPDATED_MS } from './premium/manage';
+export { RESTORE_NOTE_MS } from './premium/restore';
 
 /** One feature on the Premium page. The app says what it is; 5.0.0: the kit lists it under Included With Premium. */
 export interface PremiumFeature {
@@ -50,11 +58,6 @@ export interface PremiumPageProps extends LookProps {
 }
 
 
-/** How long "You're All Set" or "No Purchases Found" stays before the hint comes back. */
-export const RESTORE_NOTE_MS = 4000;
-
-type RestoreState = 'idle' | 'checking' | 'allSet' | 'done' | 'none' | 'failed';
-
 /**
  * A whole Premium page for Settings, the same for every app: only the features, words, colors and icon are the app's.
  * 8.0.0: every account first sees the Your Plan card, which names the plan it holds. Free: Your Plan, Get Premium, then See
@@ -64,35 +67,9 @@ type RestoreState = 'idle' | 'checking' | 'allSet' | 'done' | 'none' | 'failed';
  * Subscription and what is lost, then the included list. Right after a purchase: a welcome card. The Free and Premium
  * comparison follows this page, drawn by app-settings-kit. While the page is open, the floating crown stays hidden.
  */
-/** A date that never breaks across two lines ("Nov 15, 2026", not "Nov 15," then "2026"). */
-const keepTogether = (date: string) => date.replace(/ /g, '\u00A0');
-/** How long "Updating Your Subscription…" may show when nothing changes (the store's manage screen was closed as it was). */
-const UPDATING_MS = 20_000;
-/**
- * The shortest time "Updating Your Subscription…" shows. Once the store has been asked after its screen closed and nothing
- * changed (most often the screen was closed as it was), the box closes after this, so it never flashes and never stays.
- */
-export const SETTLE_MS = 1_500;
-/** How long the box says what changed before it closes by itself. */
-export const UPDATED_MS = 2_200;
-/**
- * The page state "Updating…" was waiting to change from, when the store still hadn't confirmed after UPDATING_MS. Kept outside
- * the page so that leaving Settings and coming back still shows the calm line and asks the store again. Null when nothing waits.
- */
-let unconfirmedFrom: string | null = null;
-let unconfirmedAt = 0;
-/** True while the page listens for a late change without showing the calm line (the store found nothing changed). */
-let unconfirmedQuiet = false;
-/** How long the calm line may wait. Past this (also after Done with nothing changed) it goes, so it never stays for good. */
-export const UNCONFIRMED_MS = 15 * 60_000;
-/** The waiting state if it is still fresh; an old one is dropped. */
-const stillUnconfirmed = () => {
-  if (unconfirmedFrom !== null && Date.now() - unconfirmedAt > UNCONFIRMED_MS) unconfirmedFrom = null;
-  return unconfirmedFrom;
-};
-
-export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, stayOfferId, beforeCancel = true, updatingArt, ...look }: PremiumPageProps) {
-  const { c, s, Text } = useLook(look);
+export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, stayOfferId, beforeCancel = true, updatingArt, ...lookProps }: PremiumPageProps) {
+  const look = useLook(lookProps);
+  const { c, s, Text } = look;
   const sub = useSubscription();
   const { paid, config } = sub;
   // 5.0.0: the floating crown hides while this page is open; it covered Change Plan and repeats what the page already says.
@@ -102,76 +79,15 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
   const ending = terms.ending;
   const until = shortDay(terms.until);
   const fail = (e: unknown) => onError?.(e);
-  const danger = c.danger ?? DEFAULT_THEME.danger!;
-  const success = c.success ?? DEFAULT_THEME.success!;
-  const successSoft = c.successSoft ?? DEFAULT_THEME.successSoft!;
-  const onTag = c.onTag ?? DEFAULT_THEME.onTag!;
-  const info = c.info ?? DEFAULT_THEME.info!;
-  const infoSoft = c.infoSoft ?? DEFAULT_THEME.infoSoft!;
-  const infoBadge = c.infoBadge ?? DEFAULT_THEME.infoBadge!;
-  const dangerSoft = c.dangerSoft ?? DEFAULT_THEME.dangerSoft!;
-  const dangerBadge = c.dangerBadge ?? DEFAULT_THEME.dangerBadge!;
-
-  const [plans, setPlans] = useState<StorePlan[]>([]);
-  const [offer, setOffer] = useState<StoreOffer | null>(null);
+  const { danger, success, info, infoSoft } = statusColors(c);
+  const plans = useStorePlans(sub, paid, ending, stayOfferId);
   const [sheet, setSheet] = useState(false);
-  const [restoring, setRestoring] = useState<RestoreState>('idle');
-  // After the store's manage screen closes: "Updating Your Subscription…" until what the person changed there shows (or 20 seconds).
-  // Only what the sheet can change counts (the tier, auto-renew, the plan, a booked switch). A fresher end date alone is not the
-  // answer: it used to close the loader early, and the page then changed by itself a few seconds later.
-  const stateKey = JSON.stringify([sub.tier, ending, sub.renewal?.productId ?? null, sub.pendingSwitch?.planId ?? null]);
-  const stateNow = useRef(stateKey);
-  stateNow.current = stateKey;
-  const [updatingFrom, setUpdatingFrom] = useState<string | null>(null);
-  const [updated, setUpdated] = useState<UpdatingDone | null>(null);
-  // After "Updating…" gave up waiting: a calm line until the store shows the change. Survives leaving the page (see unconfirmedFrom).
-  const [waitingFrom, setWaitingFrom] = useState<string | null>(() => (stillUnconfirmed() === stateKey ? stateKey : null));
-  // Listening without the calm line: the store was asked after its screen closed and nothing had changed.
-  const [quiet, setQuiet] = useState(() => unconfirmedQuiet);
-  const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Guards that read now, not at the last render: two quick taps never start two store calls.
-  const restoreBusy = useRef(false);
-  const storeBusy = useRef(false);
-  const alive = useRef(true);
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-      if (noteTimer.current) clearTimeout(noteTimer.current);
-    };
-  }, []);
-  /** Runs one store action at a time (the manage sheet, a purchase); a tap while one runs is ignored. */
-  const oneAtATime = (job: () => Promise<unknown>) => {
-    if (storeBusy.current) return;
-    storeBusy.current = true;
-    void job().catch(fail).finally(() => { storeBusy.current = false; });
-  };
-  // Opening the page while a change is still unconfirmed asks the store again. If it changed while the page was closed, the line just goes.
-  useEffect(() => {
-    if (stillUnconfirmed() === null) return;
-    if (unconfirmedFrom !== stateNow.current) unconfirmedFrom = null;
-    else void sub.refresh().catch(fail);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  useEffect(() => {
-    let live = true;
-    sub.loadPlans().then((p) => { if (live) setPlans(p); }).catch(() => undefined);
-    return () => { live = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sub.ready]);
-  useEffect(() => {
-    let live = true;
-    if (paid && !ending && stayOfferId) void sub.loadOffer(stayOfferId).then((o) => { if (live) setOffer(o); });
-    else setOffer(null);
-    return () => { live = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paid, ending, stayOfferId, sub.ready]);
 
   const per = (p: { priceString: string; period: StorePlan['period'] }) => `${p.priceString}${p.period ? s.per(p.period.unit, p.period.count) : ''}`;
   const tier = config.tiers[1] ?? 'premium';
   // The paid tier's name even on a free account ("Get Premium", not "Get Free").
   const tierLabel = paid ? sub.tierLabel : config.tierLabels[tier] ?? tier;
-  const ofTier = plans.filter((p) => p.tier === (paid ? sub.tier : tier));
+  const ofTier = plans.list.filter((p) => p.tier === (paid ? sub.tier : tier));
   const monthly = ofTier.find((p) => months(p) === 1);
   const longest = [...ofTier].sort((a, b) => (months(b) ?? 0) - (months(a) ?? 0))[0];
   const product = sub.renewal?.productId?.toLowerCase() ?? '';
@@ -183,8 +99,8 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
   const next = sub.pendingSwitch ? ofTier.find((p) => p.id === sub.pendingSwitch!.planId) : undefined;
   // "Premium Monthly" when the plan is known, so a date line says which plan it is about.
   const planName = mine ? `${tierLabel} ${labelOf(mine)}` : tierLabel;
-  /** The box says what changed for a moment: "You're All Set!" or "Subscription Updated", with the date line. */
-  const confirmed = () => {
+  /** What the box says for a moment once a change shows: "You're All Set!" or "Subscription Updated", with the date line. */
+  const describe = (): UpdatingDone => {
     const party = paid && !ending;
     const nextLabel = next ? labelOf(next) : '';
     const line = !until ? ''
@@ -192,137 +108,21 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
       : party ? s.renewsOn(planName, until)
       : paid ? s.keepUntil(planName, until)
       : '';
-    setUpdated({ title: party ? s.allSet : s.subscriptionUpdated, line, party });
+    return { title: party ? s.allSet : s.subscriptionUpdated, line, party };
   };
-  // The box waits for the change (or 20 seconds). With no answer by then, the calm line takes over and waits on.
-  useEffect(() => {
-    if (updatingFrom === null) return;
-    if (stateKey !== updatingFrom) {
-      setUpdatingFrom(null);
-      confirmed();
-      return;
-    }
-    const t = setTimeout(() => {
-      // Already closed quietly: the store answered and nothing had changed.
-      if (unconfirmedQuiet && unconfirmedFrom === updatingFrom) return;
-      unconfirmedFrom = updatingFrom;
-      unconfirmedAt = Date.now();
-      unconfirmedQuiet = false;
-      setQuiet(false);
-      setWaitingFrom(updatingFrom);
-      setUpdatingFrom(null);
-    }, UPDATING_MS);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [updatingFrom, stateKey]);
-  // The line never stays for good: it goes once UNCONFIRMED_MS has passed, even with the page open.
-  useEffect(() => {
-    if (waitingFrom === null) return;
-    const t = setTimeout(() => { if (stillUnconfirmed() === null) setWaitingFrom(null); }, Math.max(0, unconfirmedAt + UNCONFIRMED_MS - Date.now()) + 50);
-    return () => clearTimeout(t);
-  }, [waitingFrom]);
-  // A late answer still ends with "You're All Set!" or "Subscription Updated", and the calm line goes.
-  useEffect(() => {
-    if (waitingFrom === null || stateKey === waitingFrom) return;
-    unconfirmedFrom = null;
-    setWaitingFrom(null);
-    confirmed();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waitingFrom, stateKey]);
-  useEffect(() => {
-    if (!updated) return;
-    const t = setTimeout(() => setUpdated(null), UPDATED_MS);
-    return () => clearTimeout(t);
-  }, [updated]);
+  const { updating, updated, waiting, manage, oneAtATime, closeBox } = useManage(sub, ending, describe, fail);
 
-  const card = { backgroundColor: c.surface, borderColor: c.border, borderWidth: 1, borderRadius: c.radius, overflow: 'hidden' as const };
-  const line = { borderTopWidth: 1, borderTopColor: c.border };
-  const crowns = { king: c.king, kingFill: c.kingFill, queen: c.queen, queenFill: c.queenFill };
-  // The crowns are wider than tall, so they are drawn a little shorter than the space they sit in.
-  const mark = (size: number, outline = false) => icon ?? <Crowns size={Math.round(size * 0.75)} outline={outline} {...crowns} />;
-  const tag = (text: string, bg: string) => (
-    <View style={{ backgroundColor: bg, borderRadius: 9, paddingHorizontal: 8, paddingVertical: 3 }}>
-      <Text style={{ color: onTag, fontSize: 11, fontWeight: '800' }}>{text}</Text>
-    </View>
-  );
-  const row = (label: string, detail: string | null, onPress: () => void, right?: ReactNode, first = false,
-    opts: { detailColor?: string; bold?: boolean; end?: ReactNode; tint?: string; busy?: boolean } = {}) => (
-    <Pressable key={label} accessibilityRole="button" accessibilityState={opts.busy ? { busy: true } : undefined}
-      accessibilityLabel={detail ? `${label}. ${detail}` : label} onPress={opts.busy ? undefined : onPress}
-      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 60, paddingVertical: 8, paddingHorizontal: 16 },
-        !first && line, opts.tint ? { backgroundColor: opts.tint } : null, pressed && !opts.busy ? { opacity: 0.6 } : null]}>
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: c.text, fontWeight: '600', fontSize: 16 }}>{label}</Text>
-        {detail ? <Text style={{ color: opts.detailColor ?? c.muted, fontSize: 13, fontWeight: opts.bold ? '700' : '400', marginTop: 2 }}>{detail}</Text> : null}
-      </View>
-      {right ?? null}
-      {opts.end ?? <Text style={{ color: c.muted, fontSize: 18 }}>›</Text>}
-    </Pressable>
-  );
-
-  // ---- Restore Subscription: always tappable, and it always answers ----
   // 2.1.0: the store that bills the subscription, when the store says (an iPhone subscription seen on Android names the App Store).
   const billedBy = sub.renewal?.billedBy;
   const platform: StorePlatform =
     billedBy === 'app_store' ? 'ios' : billedBy === 'google_play' ? 'android' : billedBy === 'web' ? 'web' : Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'web';
-  const store = s.storeName(platform);
-  const account = s.storeAccount(platform);
-  const restore = async () => {
-    if (restoreBusy.current) return;
-    restoreBusy.current = true;
-    if (noteTimer.current) clearTimeout(noteTimer.current);
-    const wasPaid = paid;
-    setRestoring('checking');
-    let next: RestoreState;
-    try {
-      const r = await sub.restore();
-      if (r.ok) next = config.tiers.indexOf(r.tier) > 0 ? (wasPaid ? 'allSet' : 'done') : 'none';
-      else if (r.cancelled) next = 'idle';
-      else { next = 'failed'; fail(new Error(r.message)); }
-    } catch (e) {
-      next = 'failed';
-      fail(e);
-    }
-    restoreBusy.current = false;
-    if (!alive.current) return;
-    setRestoring(next);
-    const said = next === 'allSet' ? s.restoreAllSet(tierLabel, account) : next === 'done' ? s.restoreDone(tierLabel)
-      : next === 'none' ? s.restoreNone(account) : next === 'failed' ? s.restoreFailed(store) : '';
-    if (said) AccessibilityInfo.announceForAccessibility?.(said);
-    if (next === 'allSet' || next === 'done' || next === 'none') noteTimer.current = setTimeout(() => { if (alive.current) setRestoring('idle'); }, RESTORE_NOTE_MS);
-  };
-  const badge = (bg: string, fg: string, glyph: string) => (
-    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ color: fg, fontSize: 13, fontWeight: '800' }}>{glyph}</Text>
-    </View>
-  );
-  const restoreRow = (first = false) => {
-    const label = s.restoreSubscription;
-    switch (restoring) {
-      case 'checking':
-        return row(label, s.restoreChecking(store), restore, undefined, first, { detailColor: c.accent, end: <ActivityIndicator color={c.accent} />, busy: true });
-      case 'allSet':
-        return row(label, s.restoreAllSet(tierLabel, account), restore, undefined, first, { detailColor: success, bold: true, end: badge(success, onTag, '✓'), tint: successSoft });
-      case 'done':
-        return row(label, s.restoreDone(tierLabel), restore, undefined, first, { detailColor: success, bold: true, end: badge(success, onTag, '✓'), tint: successSoft });
-      case 'none':
-        return row(label, s.restoreNone(account), restore, undefined, first, { detailColor: info, bold: true, end: badge(infoBadge, info, 'i'), tint: infoSoft });
-      case 'failed':
-        return row(label, s.restoreFailed(store), restore, undefined, first, { detailColor: danger, bold: true, end: badge(dangerBadge, danger, '!'), tint: dangerSoft });
-      default:
-        return row(label, paid ? s.restoreHintPaid(tierLabel) : s.restoreHint, restore, undefined, first);
-    }
-  };
-  const bigButton = (label: string, detail: string, bg: string, fg: string, onPress: () => void) => (
-    <Pressable accessibilityRole="button" accessibilityLabel={detail ? `${label}. ${detail}` : label} onPress={onPress}
-      style={{ minHeight: 62, borderRadius: c.radius + 8, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 18 }}>
-      <Text style={{ color: fg, fontSize: 17, fontWeight: '800' }}>{label}</Text>
-      {detail ? <Text style={{ color: fg, fontSize: 13, fontWeight: '600', opacity: 0.9, marginTop: 2 }}>{detail}</Text> : null}
-    </Pressable>
-  );
-  const heading = (text: string) => (
-    <Text style={{ color: c.muted, fontSize: 13, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginHorizontal: 6, marginBottom: -6 }}>{text}</Text>
-  );
+  const words = { tierLabel, store: s.storeName(platform), account: s.storeAccount(platform) };
+  const restore = useRestore(look, sub, words, fail);
+  const restoreRow = (first = false) => <RestoreRow look={look} state={restore.state} onPress={() => void restore.restore()} paid={paid} words={words} first={first} />;
+
+  const crowns = { king: c.king, kingFill: c.kingFill, queen: c.queen, queenFill: c.queenFill };
+  // The crowns are wider than tall, so they are drawn a little shorter than the space they sit in.
+  const mark = (size: number) => icon ?? <Crowns size={Math.round(size * 0.75)} {...crowns} />;
   const lose = loseList?.length ? (
     <View style={{ backgroundColor: c.premiumSoft, borderColor: c.premium, borderWidth: 1, borderRadius: c.radius + 4, padding: 14 }}>
       <Text style={{ color: c.text, fontSize: 14, fontWeight: '800' }}>{s.whatYouLose(until)}</Text>
@@ -330,94 +130,13 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
     </View>
   ) : null;
 
-  const manage = () => oneAtATime(async () => {
-    const before = stateNow.current;
-    // "Updating…" from the moment the store's screen closes, unless the change is already here. 4.0.0: shown in every app, since a
-    // page that stayed still and then changed by itself left people unsure what happened.
-    let shownAt = 0;
-    const wait = () => {
-      if (!alive.current || shownAt || stateNow.current !== before) return;
-      shownAt = Date.now();
-      unconfirmedFrom = null;
-      unconfirmedQuiet = false;
-      setQuiet(false);
-      setWaitingFrom(null);
-      setUpdatingFrom(before);
-    };
-    // openManage returns once the store has been asked again after its screen closed (Apple's sheet, or the person's return
-    // from the store's page).
-    await sub.openManage(wait);
-    wait(); // app-payments-kit before 2.5.0 does not say when the screen closed
-    // A change shows here: the page and "You're All Set!" or "Subscription Updated" change together (the effect above).
-    // Nothing changed: most often the screen was closed as it was. After SETTLE_MS the box closes quietly, and the page keeps
-    // listening for 15 minutes, so a change the store passes on late still ends with the usual confirmation.
-    await new Promise((r) => setTimeout(r, Math.max(0, shownAt + SETTLE_MS - Date.now())));
-    if (!alive.current || stateNow.current !== before) return;
-    // The store took longer than UPDATING_MS to answer: the calm line has already taken over and stays.
-    if (unconfirmedFrom === before && !unconfirmedQuiet) return;
-    unconfirmedFrom = before;
-    unconfirmedAt = Date.now();
-    unconfirmedQuiet = true;
-    setQuiet(true);
-    setWaitingFrom(before);
-    setUpdatingFrom(null);
-  });
-  const updating = (
-    <UpdatingBox
-      waiting={updatingFrom !== null}
-      done={updated}
-      company={s.storeCompany(platform)}
-      art={updatingArt}
-      mark={icon}
-      onClose={() => { setUpdatingFrom(null); setUpdated(null); }}
-      {...look}
-    />
-  );
-  const savePct = other ? savings(other, plans) : 0;
+  const savePct = other ? savings(other, plans.list) : 0;
   // The stay offer belongs to one plan: offered only to people on that plan, never as a move to another one.
   // Offered only when it really costs less a month than the plan (a pay-up-front offer covers several months at once).
-  const stay = offer && mine && offer.plan.id === mine.id && offerSaving(offer) > 0 ? offer : null;
-  const offerPct = stay ? offerSaving(stay) : 0;
-  const switchTo = !next && longest && mine && longest !== mine && savings(longest, plans) > 0 ? longest : null;
+  const stay = plans.offer && mine && plans.offer.plan.id === mine.id && offerSaving(plans.offer) > 0 ? plans.offer : null;
+  const switchTo = !next && longest && mine && longest !== mine && savings(longest, plans.list) > 0 ? longest : null;
   const hasSheet = beforeCancel && (!!lose || !!stay || !!switchTo);
-
-  // ---- Top card ----
-  let top: ReactNode;
-  if (paid && sub.justSubscribed) {
-    top = (
-      // Not one accessible block, so VoiceOver can still reach Start Exploring inside it.
-      <View style={{ alignItems: 'center', padding: 22, borderRadius: c.radius + 8, backgroundColor: c.premiumSoft, borderWidth: 2, borderColor: c.premium }}>
-        <Text style={{ position: 'absolute', left: 28, top: 16, color: c.premium, fontSize: 14 }}>✦</Text>
-        <Text style={{ position: 'absolute', right: 30, top: 24, color: c.premium, fontSize: 18 }}>✦</Text>
-        <Text style={{ position: 'absolute', left: 54, top: 92, color: c.premium, fontSize: 10 }}>✦</Text>
-        <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}>{mark(44)}</View>
-        <Text style={{ color: c.text, fontSize: 22, fontWeight: '800', marginTop: 12 }}>{s.welcomeTitle(tierLabel)}</Text>
-        <Text style={{ color: c.muted, fontSize: 14, marginTop: 4, textAlign: 'center' }}>{until ? `${s.welcomeBody} ${s.renews} ${until}.` : s.welcomeBody}</Text>
-        <Pressable accessibilityRole="button" onPress={sub.dismissWelcome} style={{ marginTop: 14, minHeight: 46, paddingHorizontal: 26, borderRadius: 23, backgroundColor: c.accent, justifyContent: 'center' }}>
-          <Text style={{ color: c.onAccent, fontSize: 16, fontWeight: '800' }}>{s.startExploring}</Text>
-        </Pressable>
-      </View>
-    );
-  } else if (paid) {
-    // 8.0.0: the Your Plan card says which plan the account holds, its status, the next date with the price, and the store.
-    top = <YourPlanCard icon={icon} plans={plans} {...look} />;
-  } else {
-    const longPlan = ofTier.find((p) => p !== monthly && p.period);
-    // 8.0.0: a free account also sees which plan it holds first, then what Premium offers.
-    top = (
-      <>
-      <YourPlanCard plans={plans} {...look} />
-      <View accessible style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: c.radius + 8, backgroundColor: c.premiumSoft, borderWidth: 1, borderColor: c.premium }}>
-        <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}>{mark(26)}</View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ color: c.text, fontSize: 18, fontWeight: '800' }}>{s.getPremium(tierLabel)}</Text>
-          {monthly ? <Text style={{ color: c.accent, fontSize: 14, fontWeight: '700' }}>{s.fromPrice(per(monthly))}</Text> : null}
-          <Text style={{ color: c.muted, fontSize: 13 }}>{longPlan ? s.orPrice(per(longPlan)) : s.getPremiumNote}</Text>
-        </View>
-      </View>
-      </>
-    );
-  }
+  const card = cardStyle(c);
 
   // ---- Subscription section ----
   let actions: ReactNode;
@@ -425,11 +144,11 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
     const choice = monthly && longest && longest !== monthly ? s.priceChoice(per(monthly), per(longest)) : '';
     actions = (
       <>
-        {heading(s.subscription)}
-        {bigButton(s.unlock, choice, c.premium, c.onPremium, onOpenPlans)}
+        <Heading look={look} text={s.subscription} />
+        <BigButton look={look} label={s.unlock} detail={choice} bg={c.premium} fg={c.onPremium} onPress={onOpenPlans} />
         <View style={card}>
           {restoreRow(true)}
-          {sub.canRedeemCode ? row(s.haveCode, null, () => void sub.redeemCode('').catch(fail)) : null}
+          {sub.canRedeemCode ? <PageRow look={look} label={s.haveCode} detail={null} onPress={() => void sub.redeemCode('').catch(fail)} /> : null}
         </View>
       </>
     );
@@ -437,27 +156,27 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
     actions = (
       <>
         {/* 8.0.0: "Manage"; "Your Plan" is now the card at the top of the page. */}
-        {heading(s.manageHeading)}
+        <Heading look={look} text={s.manageHeading} />
         {terms.billingIssue ? (
           <View accessibilityLiveRegion="polite" style={{ padding: 12, borderRadius: c.radius, backgroundColor: c.warn }}>
             <Text style={{ color: c.text, fontSize: 14, lineHeight: 20 }}>{s.graceNote}</Text>
           </View>
         ) : null}
-        {waitingFrom !== null && !quiet ? (
+        {waiting ? (
           <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: c.radius, backgroundColor: infoSoft }}>
             <ActivityIndicator size="small" color={info} />
             <Text style={{ flex: 1, color: c.text, fontSize: 14, lineHeight: 20 }}>{s.notConfirmedYet(s.storeCompany(platform))}</Text>
           </View>
         ) : null}
-        {ending ? bigButton(s.renewSubscription, until ? s.continuesAfter(planName, keepTogether(until)) : '', c.accent, c.onAccent, manage) : null}
+        {ending ? <BigButton look={look} label={s.renewSubscription} detail={until ? s.continuesAfter(planName, keepTogether(until)) : ''} bg={c.accent} fg={c.onAccent} onPress={manage} /> : null}
         {ending ? lose : null}
         <View style={card}>
           {/* On the longest plan there is nothing to move up to, so Change Plan is left out instead of opening an empty choice. */}
-          {next
-            ? row(s.changePlan, s.planStarts(labelOf(next), shortDay(sub.pendingSwitch!.startsAt)), onOpenPlans, undefined, true, { detailColor: c.accent, bold: true })
-            : other
-              ? row(s.changePlan, s.planLine(labelOf(other), per(other)), onOpenPlans, savePct > 0 ? tag(s.saveTag(savePct), success) : null, true)
-              : null}
+          {next ? (
+            <PageRow look={look} label={s.changePlan} detail={s.planStarts(labelOf(next), shortDay(sub.pendingSwitch!.startsAt))} onPress={onOpenPlans} first detailColor={c.accent} bold />
+          ) : other ? (
+            <PageRow look={look} label={s.changePlan} detail={s.planLine(labelOf(other), per(other))} onPress={onOpenPlans} right={savePct > 0 ? <Tag look={look} text={s.saveTag(savePct)} bg={success} /> : null} first />
+          ) : null}
           {restoreRow()}
         </View>
         {/* 5.0.0: Cancel is the last thing on the page, a quiet red row in its own card, with the end date under it. */}
@@ -477,49 +196,7 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
     );
   }
 
-  // ---- Included With Premium ----
-  // 5.0.0: plan facts only. A subscriber sees every feature the plan includes, each with a check; nothing here switches or
-  // edits a setting. Features whose settings live in Preferences are named in one line under the card. A free account sees
-  // none here: the settings kit's comparison follows the page.
-  const inPrefs = features.filter((f) => f.inPreferences).map((f) => f.label);
-  // 7.0.0 Page rule: the Premium page holds plan facts only. A switch or an editor passed here is refused and named in development.
-  const refused = features.filter((f) => 'toggle' in f || 'children' in f).map((f) => f.label).join(', ');
-  useEffect(() => {
-    if (refused && typeof __DEV__ !== 'undefined' && __DEV__) console.warn(`app-subscriptions-kit: ${refused} passed a switch or an editor to the Premium page, which shows plan facts only (Page rule). Put it in Preferences and set inPreferences.`);
-  }, [refused]);
-  const list = paid && features.length ? (
-    <>
-      {heading(s.includedWith(tierLabel))}
-      <View style={{ gap: 6 }}>
-        <View style={card}>
-          {features.map((f, i) => {
-            const inner = (
-              <>
-                {f.icon ?? null}
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: c.text, fontSize: 16, fontWeight: '600' }}>{f.label}</Text>
-                  {f.detail ? <Text style={{ color: c.muted, fontSize: 12, marginTop: 2 }}>{f.detail}</Text> : null}
-                </View>
-                <Text style={{ color: f.onPress ? c.muted : c.accent, fontSize: f.onPress ? 20 : 17, fontWeight: '800' }} accessibilityElementsHidden importantForAccessibility="no">{f.onPress ? '›' : '✓'}</Text>
-              </>
-            );
-            const rowStyle = { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 12, paddingVertical: 8, paddingHorizontal: 16, minHeight: 52 };
-            const said = [f.label, f.detail, s.included].filter(Boolean).join('. ');
-            return f.onPress ? (
-              <Pressable key={f.key} onPress={f.onPress} accessibilityRole="button" accessibilityLabel={said} accessibilityHint={s.opensPage}
-                style={({ pressed }) => [rowStyle, i ? line : null, pressed ? { opacity: 0.6 } : null]}>
-                {inner}
-              </Pressable>
-            ) : (
-              <View key={f.key} accessible accessibilityLabel={said} style={[rowStyle, i ? line : null]}>{inner}</View>
-            );
-          })}
-        </View>
-        {inPrefs.length ? <Text style={{ color: c.muted, fontSize: 13, lineHeight: 18, marginHorizontal: 16 }}>{s.setInPreferences(inPrefs)}</Text> : null}
-      </View>
-    </>
-  ) : null;
-
+  const list = <IncludedList look={look} features={features} tierLabel={tierLabel} show={paid} />;
   // Free and after a cancel the Subscription section leads; a renewing subscriber sees the features first.
   const subscriptionFirst = !paid || ending;
   const close = () => setSheet(false);
@@ -537,40 +214,56 @@ export function PremiumPage({ features, onOpenPlans, onError, icon, loseList, st
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet]);
+  const longPlan = ofTier.find((p) => p !== monthly && p.period);
   return (
     <View style={{ gap: 14 }}>
-      {top}
-      {updating}
+      <TopCard look={look} lookProps={lookProps} sub={sub} plans={plans.list} icon={icon} mark={mark} tierLabel={tierLabel} until={until} fromPrice={monthly ? per(monthly) : null} orPrice={longPlan ? per(longPlan) : null} />
+      <UpdatingBox waiting={updating} done={updated} company={s.storeCompany(platform)} art={updatingArt} mark={icon} onClose={closeBox} {...lookProps} />
       {subscriptionFirst ? actions : list}
       {subscriptionFirst ? list : actions}
-      {sub.tester.available ? <SubscriptionRow onOpenPlans={onOpenPlans} {...look} /> : null}
-      <Modal visible={sheet} transparent animationType="slide" onRequestClose={close} onDismiss={afterClose}>
-        <Pressable accessibilityLabel={s.close} onPress={close} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} />
-        <View style={{ backgroundColor: c.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 36, gap: 12 }}>
-          <View style={{ alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: c.border, marginBottom: 4 }} />
-          <Text accessibilityRole="header" style={{ color: c.text, fontSize: 22, fontWeight: '800', textAlign: 'center' }}>{s.beforeYouGo}</Text>
-          {until ? <Text style={{ color: c.muted, fontSize: 14, textAlign: 'center' }}>{s.keepEitherWay(planName, until)}</Text> : null}
-          {lose}
-          {stay || switchTo ? heading(s.insteadYouCould) : null}
-          {stay ? (
-            <View style={card}>
-              {row(s.stayOffer(offerPct), s.offerLine(per({ priceString: stay.priceString, period: stay.period }), stay.cycles * stay.period.count, stay.period.unit),
-                () => oneAtATime(async () => { const r = await sub.buyOffer(stay); if (r.ok) close(); else if (!r.cancelled) fail(new Error(r.message)); }),
-                tag(s.offerTag, c.premium), true)}
-            </View>
-          ) : null}
-          {switchTo ? (
-            <View style={card}>
-              {row(s.switchToPlan(labelOf(switchTo)), s.aboutPerMonth(switchTo.period ? `${switchTo.priceString} ${s.every(switchTo.period.unit, switchTo.period.count)}` : switchTo.priceString, money(switchTo.price / (months(switchTo) ?? 1), switchTo.currency)),
-                () => { close(); onOpenPlans(); }, tag(s.saveTag(savings(switchTo, plans)), success), true)}
-            </View>
-          ) : null}
-          {bigButton(s.keepPremium(tierLabel), '', c.accent, c.onAccent, close)}
-          <Pressable accessibilityRole="button" onPress={() => { manageAfterClose.current = true; close(); }} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: danger, fontSize: 15, fontWeight: '700' }}>{s.continueToCancel}</Text>
-          </Pressable>
-        </View>
-      </Modal>
+      {sub.tester.available ? <SubscriptionRow onOpenPlans={onOpenPlans} {...lookProps} /> : null}
+      <BeforeYouGo
+        look={look}
+        visible={sheet}
+        onClose={close}
+        onDismiss={afterClose}
+        onContinueToCancel={() => {
+          manageAfterClose.current = true;
+          close();
+        }}
+        planName={planName}
+        tierLabel={tierLabel}
+        until={until}
+        lose={lose}
+        stay={stay}
+        offerPct={stay ? offerSaving(stay) : 0}
+        onTakeOffer={(o) => oneAtATime(async () => { const r = await sub.buyOffer(o); if (r.ok) close(); else if (!r.cancelled) fail(new Error(r.message)); })}
+        switchTo={switchTo}
+        plans={plans.list}
+        labelOf={labelOf}
+        per={per}
+        onOpenPlans={onOpenPlans}
+      />
     </View>
   );
+}
+
+/** The store's plans, and the stay offer for a renewing subscriber when the app names one. */
+function useStorePlans(sub: ReturnType<typeof useSubscription>, paid: boolean, ending: boolean, stayOfferId: string | undefined) {
+  const [list, setList] = useState<StorePlan[]>([]);
+  const [offer, setOffer] = useState<StoreOffer | null>(null);
+  useEffect(() => {
+    let live = true;
+    sub.loadPlans().then((p) => { if (live) setList(p); }).catch(() => undefined);
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sub.ready]);
+  useEffect(() => {
+    let live = true;
+    if (paid && !ending && stayOfferId) void sub.loadOffer(stayOfferId).then((o) => { if (live) setOffer(o); });
+    else setOffer(null);
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paid, ending, stayOfferId, sub.ready]);
+  return { list, offer };
 }

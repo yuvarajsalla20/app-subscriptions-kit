@@ -5,7 +5,7 @@ import { useLook, type LookProps } from './look';
 import type { PurchaseResult, StorePlan } from './payments';
 import { money, perMonth, savings } from './pricing';
 import { rank } from './rules';
-import { shortDay } from './status';
+import { choosePlan } from './plansChoice';
 import { useSubscription } from './SubscriptionProvider';
 
 export interface PlansScreenProps extends LookProps {
@@ -85,22 +85,7 @@ export function PlansScreen({ header, onClose, onOpenTerms, onOpenPrivacy, previ
     () => config.plans.filter((p) => p.tier === tab).flatMap((p) => { const sp = source.find((x) => x.id === p.id); return sp ? [{ cfg: p, sp }] : []; }),
     [config.plans, tab, source],
   );
-  const has = rank(config, sub.tier) >= rank(config, tab);
-  // The row the account pays for now, only on the tab of the tier it has.
-  const current = has && currentPlanId && sub.tier === tab ? shown.find((x) => x.cfg.id === currentPlanId) ?? null : null;
-  // The plans a subscriber may move to: the same tier's others, narrowed by the app (for example, longer plans only).
-  const targets = current ? shown.filter((x) => x.cfg.id !== current.cfg.id && (!canSwitchTo || canSwitchTo(current.sp, x.sp))) : [];
-  // A switch already booked for the next renewal: that plan shows NEXT and nothing can be switched again until it starts.
-  const pending = current && sub.pendingSwitch && sub.pendingSwitch.planId !== current.cfg.id ? shown.find((x) => x.cfg.id === sub.pendingSwitch!.planId) ?? null : null;
-  const pendingDay = pending ? shortDay(sub.pendingSwitch!.startsAt) : '';
-  const canSwitch = !pending && !!current && !!onSwitch && !switchBlocked && targets.length > 0;
-  // While switching is offered, the current plan can't be picked and the best allowed plan is picked to start with.
-  const others = canSwitch ? targets : shown;
-  // With a switch booked, the plan in use stays the one marked; nothing else can be picked until the switch starts.
-  const chosen = (pending ? current : null) ?? shown.find((x) => x.cfg.id === pick && !(canSwitch && x.cfg.id === current!.cfg.id))
-    // A subscriber whose plan the store hasn't named yet sees no row picked: never a plan they don't pay for.
-    ?? (canSwitch ? others.find((x) => x.cfg.badge) ?? others.find((x) => x.cfg.selected) ?? others[0] : has ? current : shown.find((x) => x.cfg.selected) ?? shown[0]);
-  const switching = canSwitch && !!chosen && chosen.cfg.id !== current!.cfg.id;
+  const { has, current, targets, pending, pendingDay, canSwitch, chosen, switching } = choosePlan({ shown, has: rank(config, sub.tier) >= rank(config, tab), currentId: currentPlanId && sub.tier === tab ? currentPlanId : null, pendingSwitch: sub.pendingSwitch, pick, canSwitchTo, switchOffered: !!onSwitch && !switchBlocked });
   const live = sub.ready && store.length > 0;
   const tabLabel = config.tierLabels[tab]!;
   const trial = !sub.paid ? chosen?.sp.trialDays ?? null : null;
