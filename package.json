@@ -1,6 +1,6 @@
 {
   "name": "app-subscriptions-kit",
-  "version": "11.1.0",
+  "version": "11.2.0",
   "description": "Reusable subscription pattern for React Native / Expo apps: one config for tiers, features and limits, canUse/limit checks, a useSubscription hook, and themeable Plans screen, Free vs paid table, lock badges, gate and Settings row. Works with app-payments-kit or any payments object.",
   "main": "src/index.ts",
   "types": "src/index.ts",
@@ -16,10 +16,11 @@
   "license": "MIT",
   "author": "Yuvaraj Salla",
   "peerDependencies": {
+    "app-core-kit": ">=1.12.0",
+    "firebase": ">=11",
     "react": ">=18",
     "react-native": ">=0.74",
-    "react-native-svg": ">=13",
-    "firebase": ">=11"
+    "react-native-svg": ">=13"
   },
   "peerDependenciesMeta": {
     "firebase": {
@@ -29,6 +30,7 @@
   "devDependencies": {
     "@types/react": "~19.3.0",
     "@types/react-test-renderer": "^19.3.1",
+    "app-core-kit": "git+https://github.com/yuvarajsalla20/app-core-kit.git#7d930db5a0c61c88fc5157465e524c535a091e0e",
     "firebase": "^11.10.0",
     "react": "19.3.0",
     "react-native": "0.88.1",
