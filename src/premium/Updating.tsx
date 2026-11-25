@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Animated, Easing, Modal, Pressable, View } from 'react-native';
-import { Crowns, useLook, type LookProps } from './look';
+import { Crowns, useLook, type LookProps } from '../look';
 
 /** Whether the phone asks for less motion. Read once, then kept in step. */
 export function useReduceMotion() {

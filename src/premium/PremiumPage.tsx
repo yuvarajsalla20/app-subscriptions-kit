@@ -1,23 +1,23 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
-import { Crowns, useLook, type LookProps } from './look';
+import { Crowns, useLook, type LookProps } from '../look';
 import { UpdatingBox, type UpdatingDone } from './Updating';
-import type { StoreOffer, StorePlan } from './payments';
-import { isPlan, months, offerSaving, savings } from './pricing';
-import { shortDay, subscriptionTerms } from './status';
-import { useSubscription } from './SubscriptionProvider';
-import type { StorePlatform } from './theme';
+import type { StoreOffer, StorePlan } from '../subscription/payments';
+import { isPlan, months, offerSaving, savings } from '../subscription/pricing';
+import { shortDay, subscriptionTerms } from '../subscription/status';
+import { useSubscription } from '../subscription/SubscriptionProvider';
+import type { StorePlatform } from '../theme';
 import { SubscriptionRow } from './SubscriptionRow';
-import { usePremiumPageOpen } from './pageOpen';
-import { BeforeYouGo } from './premium/BeforeYouGo';
-import { IncludedList } from './premium/IncludedList';
-import { useManage } from './premium/manage';
-import { BigButton, cardStyle, Heading, keepTogether, PageRow, statusColors, Tag } from './premium/parts';
-import { RestoreRow, useRestore } from './premium/restore';
-import { TopCard } from './premium/TopCard';
+import { usePremiumPageOpen } from '../shared/pageOpen';
+import { BeforeYouGo } from './BeforeYouGo';
+import { IncludedList } from './IncludedList';
+import { useManage } from './manage';
+import { BigButton, cardStyle, Heading, keepTogether, PageRow, statusColors, Tag } from './parts';
+import { RestoreRow, useRestore } from './restore';
+import { TopCard } from './TopCard';
 
-export { SETTLE_MS, UNCONFIRMED_MS, UPDATED_MS } from './premium/manage';
-export { RESTORE_NOTE_MS } from './premium/restore';
+export { SETTLE_MS, UNCONFIRMED_MS, UPDATED_MS } from './manage';
+export { RESTORE_NOTE_MS } from './restore';
 
 /** One feature on the Premium page. The app says what it is; 5.0.0: the kit lists it under Included With Premium. */
 export interface PremiumFeature {

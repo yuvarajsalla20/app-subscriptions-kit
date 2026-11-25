@@ -1,7 +1,7 @@
-import type { PlanConfig } from './define';
-import type { StorePlan } from './payments';
-import type { PendingSwitch } from './pendingSwitch';
-import { shortDay } from './status';
+import type { PlanConfig } from '../subscription/define';
+import type { StorePlan } from '../subscription/payments';
+import type { PendingSwitch } from '../subscription/pendingSwitch';
+import { shortDay } from '../subscription/status';
 
 /** A plan of the shown tier, with the store's price for it. */
 export interface ShownPlan {

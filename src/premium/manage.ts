@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import type { SubscriptionState } from '../SubscriptionProvider';
-import type { UpdatingDone } from '../Updating';
+import type { SubscriptionState } from '../subscription/SubscriptionProvider';
+import type { UpdatingDone } from './Updating';
 
 /** How long "Updating Your Subscription…" may show when nothing changes (the store's manage screen was closed as it was). */
 const UPDATING_MS = 20_000;

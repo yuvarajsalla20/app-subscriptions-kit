@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
-import type { PremiumFeature } from '../PremiumPage';
+import type { PremiumFeature } from './PremiumPage';
 import { cardStyle, Heading, lineStyle, type Look } from './parts';
 
 /**

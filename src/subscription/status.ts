@@ -1,7 +1,7 @@
 import { isPlan } from './pricing';
 import type { PlanConfig } from './define';
 import type { RenewalInfo, ServerInfo, WatchState } from './payments';
-import type { SubscriptionStrings } from './theme';
+import type { SubscriptionStrings } from '../theme';
 
 /** The lines of the status card, worked out from what the store or a server row says. Empty strings are left out. */
 export interface StatusLines {

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { CompareTable } from './CompareTable';
-import { useLook, type LookProps } from './look';
-import type { PurchaseResult, StorePlan } from './payments';
-import { money, perMonth, savings } from './pricing';
-import { rank } from './rules';
+import { useLook, type LookProps } from '../look';
+import type { PurchaseResult, StorePlan } from '../subscription/payments';
+import { money, perMonth, savings } from '../subscription/pricing';
+import { rank } from '../subscription/rules';
 import { choosePlan } from './plansChoice';
-import { useSubscription } from './SubscriptionProvider';
+import { useSubscription } from '../subscription/SubscriptionProvider';
 
 export interface PlansScreenProps extends LookProps {
   /** Drawn at the top: a logo and a line on what the paid tier gives. */
